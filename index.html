@@ -4,1037 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<link
+    rel="icon"
+    type="image/jpeg"
+    href="https://static.vecteezy.com/system/resources/previews/043/623/704/non_2x/engineering-line-circle-icon-design-vector.jpg"
+>
+
 <title>Accelerated Engineering Studies — NBHS</title>
 
-<link rel="icon"
-href="https://static.vecteezy.com/system/resources/previews/043/623/704/non_2x/engineering-line-circle-icon-design-vector.jpg">
-
-<script type="module">
-
-import { initializeApp }
-from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-
-import {
-    getAuth,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signOut,
-    sendEmailVerification,
-    onAuthStateChanged
-}
-from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-
-import {
-    getFirestore,
-    collection,
-    addDoc,
-    getDocs,
-    deleteDoc,
-    doc,
-    updateDoc,
-    query,
-    orderBy,
-    where,
-    serverTimestamp
-}
-from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-
-
-/* =========================================================
-   FIREBASE
-========================================================= */
-
-const firebaseConfig = {
-
-    apiKey: "AIzaSyDLLOZp-9G4fm-GqPn8JJ2DtLTXca-C5BY",
-
-    authDomain:
-        "engineeringstudieseoi.firebaseapp.com",
-
-    projectId:
-        "engineeringstudieseoi",
-
-    storageBucket:
-        "engineeringstudieseoi.firebasestorage.app",
-
-    messagingSenderId:
-        "692995755223",
-
-    appId:
-        "1:692995755223:web:ab00efbc1c3d6f2e74f492"
-
-};
-
-const app = initializeApp(firebaseConfig);
-
-const auth = getAuth(app);
-
-const db = getFirestore(app);
-
-
-/* =========================================================
-   ADMIN UID
-========================================================= */
-
-const ADMIN_UID =
-    "jF8j9cYT1kMBkMG9rbTYLj9E6bI2";
-
-
-/* =========================================================
-   DOM
-========================================================= */
-
-const signupForm =
-    document.getElementById("signupForm");
-
-const signupMessage =
-    document.getElementById("signupMessage");
-
-const loginForm =
-    document.getElementById("loginForm");
-
-const loginMessage =
-    document.getElementById("loginMessage");
-
-const loginSection =
-    document.getElementById("loginSection");
-
-const adminPanel =
-    document.getElementById("adminPanel");
-
-const applicantList =
-    document.getElementById("applicantList");
-
-const applicantCount =
-    document.getElementById("applicantCount");
-
-const adminApplicantList =
-    document.getElementById("adminApplicantList");
-
-const manualAddForm =
-    document.getElementById("manualAddForm");
-
-const adminMessage =
-    document.getElementById("adminMessage");
-
-const logoutButton =
-    document.getElementById("logoutButton");
-
-const conditionsBox =
-    document.getElementById("conditionsBox");
-
-const acceptConditions =
-    document.getElementById("acceptConditions");
-
-const signupButton =
-    document.getElementById("signupButton");
-
-
-/* =========================================================
-   CONDITIONS
-========================================================= */
-
-let conditionsRead = false;
-
-conditionsBox.addEventListener("scroll", () => {
-
-    const reachedBottom =
-        conditionsBox.scrollTop +
-        conditionsBox.clientHeight >=
-        conditionsBox.scrollHeight - 10;
-
-    if (reachedBottom) {
-
-        conditionsRead = true;
-
-        acceptConditions.disabled = false;
-
-        updateSignupButton();
-    }
-
-});
-
-
-acceptConditions.addEventListener("change", () => {
-
-    updateSignupButton();
-
-});
-
-
-function updateSignupButton() {
-
-    signupButton.disabled =
-        !(conditionsRead &&
-          acceptConditions.checked);
-
-}
-
-
-/* =========================================================
-   SIGNUP
-========================================================= */
-
-signupForm.addEventListener("submit", async (event) => {
-
-    event.preventDefault();
-
-    if (!conditionsRead) {
-
-        showMessage(
-            signupMessage,
-            "Please scroll to the bottom of the conditions first.",
-            "error"
-        );
-
-        return;
-    }
-
-    if (!acceptConditions.checked) {
-
-        showMessage(
-            signupMessage,
-            "Please accept the conditions.",
-            "error"
-        );
-
-        return;
-    }
-
-
-    const name =
-        document
-            .getElementById("studentName")
-            .value
-            .trim();
-
-    const email =
-        document
-            .getElementById("studentEmail")
-            .value
-            .trim()
-            .toLowerCase();
-
-    const year =
-        document
-            .getElementById("studentYear")
-            .value;
-
-
-    if (!name || !email || !year) {
-
-        showMessage(
-            signupMessage,
-            "Please complete all fields.",
-            "error"
-        );
-
-        return;
-    }
-
-
-    signupButton.disabled = true;
-
-    showMessage(
-        signupMessage,
-        "Submitting your expression of interest...",
-        "normal"
-    );
-
-
-    try {
-
-        /* Check duplicate application */
-
-        const existingQuery = query(
-            collection(db, "applicants"),
-            where("email", "==", email)
-        );
-
-        const existing =
-            await getDocs(existingQuery);
-
-
-        if (!existing.empty) {
-
-            showMessage(
-                signupMessage,
-                "That email address has already expressed interest.",
-                "error"
-            );
-
-            signupButton.disabled = false;
-
-            return;
-        }
-
-
-        /*
-           Create Firebase account.
-
-           IMPORTANT:
-           We intentionally DO NOT sign the user out here.
-           This allows verify.html to securely update their
-           own Firestore document after email verification.
-        */
-
-        const temporaryPassword =
-            generateTemporaryPassword();
-
-
-        const credential =
-            await createUserWithEmailAndPassword(
-                auth,
-                email,
-                temporaryPassword
-            );
-
-
-        const user =
-            credential.user;
-
-
-        /*
-           Save applicant first.
-        */
-
-        await addDoc(
-            collection(db, "applicants"),
-            {
-
-                name: name,
-
-                year: Number(year),
-
-                email: email,
-
-                uid: user.uid,
-
-                verified: false,
-
-                manuallyAdded: false,
-
-                createdAt: serverTimestamp()
-
-            }
-        );
-
-
-        /*
-           Send verification email.
-
-           The email redirects to verify.html.
-        */
-
-        await sendEmailVerification(
-            user,
-            {
-                url:
-                    window.location.origin +
-                    "/verify.html",
-
-                handleCodeInApp: false
-            }
-        );
-
-
-        showMessage(
-            signupMessage,
-            "Application submitted! Check your inbox — and please check your spam/junk folder too — for the Firebase verification email. Click the verification link to confirm your interest.",
-            "success"
-        );
-
-
-        signupForm.reset();
-
-        conditionsBox.scrollTop = 0;
-
-        conditionsRead = false;
-
-        acceptConditions.checked = false;
-
-        acceptConditions.disabled = true;
-
-        signupButton.disabled = true;
-
-
-        await loadApplicants();
-
-
-    } catch (error) {
-
-        console.error(
-            "SIGNUP ERROR:",
-            error
-        );
-
-
-        let message =
-            "Something went wrong while submitting your expression of interest.";
-
-
-        switch (error.code) {
-
-            case "auth/email-already-in-use":
-
-                message =
-                    "That email address already has a Firebase account. If you have already expressed interest, you do not need to submit again.";
-
-                break;
-
-            case "auth/invalid-email":
-
-                message =
-                    "Please enter a valid email address.";
-
-                break;
-
-            case "auth/operation-not-allowed":
-
-                message =
-                    "Email/password authentication is not enabled in Firebase Authentication.";
-
-                break;
-
-            case "auth/network-request-failed":
-
-                message =
-                    "There was a network problem. Check your internet connection and try again.";
-
-                break;
-
-            case "auth/too-many-requests":
-
-                message =
-                    "Too many attempts have been made. Please wait a little while before trying again.";
-
-                break;
-
-            case "auth/weak-password":
-
-                message =
-                    "Firebase rejected the temporary password. Please try again.";
-
-                break;
-
-            case "permission-denied":
-
-                message =
-                    "Firebase rejected the database request. Check your Firestore security rules.";
-
-                break;
-
-        }
-
-
-        showMessage(
-            signupMessage,
-            message,
-            "error"
-        );
-
-        signupButton.disabled = false;
-
-    }
-
-});
-
-
-function generateTemporaryPassword() {
-
-    return crypto.randomUUID() +
-        "Aa1!";
-
-}
-
-
-/* =========================================================
-   PUBLIC APPLICANTS
-========================================================= */
-
-async function loadApplicants() {
-
-    applicantList.innerHTML =
-        '<div class="loading">Loading...</div>';
-
-    try {
-
-        const q = query(
-            collection(db, "applicants"),
-            orderBy("createdAt", "asc")
-        );
-
-        const snapshot =
-            await getDocs(q);
-
-        applicantList.innerHTML = "";
-
-        applicantCount.textContent =
-            snapshot.size;
-
-
-        if (snapshot.empty) {
-
-            applicantList.innerHTML =
-                '<div class="empty">No students have expressed interest yet.</div>';
-
-            return;
-        }
-
-
-        snapshot.forEach((applicant) => {
-
-            const data =
-                applicant.data();
-
-            const card =
-                document.createElement("div");
-
-            card.className =
-                "applicant";
-
-            card.innerHTML = `
-
-                <div>
-
-                    <strong>
-                        ${escapeHTML(data.name || "Unknown")}
-                    </strong>
-
-                    <span>
-                        Year ${escapeHTML(
-                            String(data.year || "")
-                        )}
-                    </span>
-
-                </div>
-
-            `;
-
-            applicantList.appendChild(card);
-
-        });
-
-    } catch (error) {
-
-        console.error(
-            "PUBLIC LIST ERROR:",
-            error
-        );
-
-        applicantList.innerHTML =
-            '<div class="error">Unable to load the current list.</div>';
-
-    }
-
-}
-
-
-/* =========================================================
-   ADMIN LOGIN
-========================================================= */
-
-loginForm.addEventListener("submit", async (event) => {
-
-    event.preventDefault();
-
-
-    const email =
-        document
-            .getElementById("adminEmail")
-            .value
-            .trim();
-
-    const password =
-        document
-            .getElementById("adminPassword")
-            .value;
-
-
-    try {
-
-        const credential =
-            await signInWithEmailAndPassword(
-                auth,
-                email,
-                password
-            );
-
-
-        if (
-            credential.user.uid !==
-            ADMIN_UID
-        ) {
-
-            await signOut(auth);
-
-            showMessage(
-                loginMessage,
-                "This account is not authorised to access the administrator panel.",
-                "error"
-            );
-
-            return;
-        }
-
-
-        showMessage(
-            loginMessage,
-            "Logged in successfully.",
-            "success"
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "LOGIN ERROR:",
-            error
-        );
-
-        showMessage(
-            loginMessage,
-            "Invalid administrator login details.",
-            "error"
-        );
-
-    }
-
-});
-
-
-/* =========================================================
-   AUTH STATE
-========================================================= */
-
-onAuthStateChanged(
-    auth,
-    async (user) => {
-
-        if (!user) {
-
-            loginSection.style.display =
-                "block";
-
-            adminPanel.style.display =
-                "none";
-
-            return;
-        }
-
-
-        /*
-           Normal applicants are allowed to remain signed in
-           while they verify their email.
-
-           Only the admin UID gets the admin panel.
-        */
-
-        if (
-            user.uid !==
-            ADMIN_UID
-        ) {
-
-            loginSection.style.display =
-                "block";
-
-            adminPanel.style.display =
-                "none";
-
-            return;
-        }
-
-
-        loginSection.style.display =
-            "none";
-
-        adminPanel.style.display =
-            "block";
-
-        await loadAdminApplicants();
-
-    }
-);
-
-
-/* =========================================================
-   ADMIN APPLICANTS
-========================================================= */
-
-async function loadAdminApplicants() {
-
-    adminApplicantList.innerHTML =
-        '<div class="loading">Loading applicants...</div>';
-
-    try {
-
-        const q = query(
-            collection(db, "applicants"),
-            orderBy("createdAt", "desc")
-        );
-
-        const snapshot =
-            await getDocs(q);
-
-        adminApplicantList.innerHTML = "";
-
-
-        if (snapshot.empty) {
-
-            adminApplicantList.innerHTML =
-                '<div class="empty">No applicants.</div>';
-
-            return;
-        }
-
-
-        snapshot.forEach((applicant) => {
-
-            const data =
-                applicant.data();
-
-            const card =
-                document.createElement("div");
-
-            card.className =
-                "admin-applicant";
-
-
-            card.innerHTML = `
-
-                <div class="admin-info">
-
-                    <strong>
-                        ${escapeHTML(
-                            data.name || "Unknown"
-                        )}
-                    </strong>
-
-                    <span>
-                        Year ${escapeHTML(
-                            String(data.year || "")
-                        )}
-                    </span>
-
-                    <span>
-                        ${escapeHTML(
-                            data.email || "No email"
-                        )}
-                    </span>
-
-                    <small>
-                        ${
-                            data.verified
-                                ? "✓ Verified"
-                                : "⚠ Not verified"
-                        }
-                    </small>
-
-                    ${
-                        data.manuallyAdded
-                            ? "<small>Added by administrator</small>"
-                            : ""
-                    }
-
-                </div>
-
-                <button
-                    class="danger-button"
-                    type="button"
-                >
-                    Delete
-                </button>
-
-            `;
-
-
-            const deleteButton =
-                card.querySelector(
-                    ".danger-button"
-                );
-
-
-            deleteButton.addEventListener(
-                "click",
-                async () => {
-
-                    if (
-                        !confirm(
-                            `Delete ${data.name} from the applicant list?`
-                        )
-                    ) {
-                        return;
-                    }
-
-
-                    deleteButton.disabled = true;
-
-
-                    try {
-
-                        await deleteDoc(
-                            doc(
-                                db,
-                                "applicants",
-                                applicant.id
-                            )
-                        );
-
-
-                        showMessage(
-                            adminMessage,
-                            "Applicant deleted.",
-                            "success"
-                        );
-
-
-                        await loadAdminApplicants();
-
-                        await loadApplicants();
-
-
-                    } catch (error) {
-
-                        console.error(
-                            "DELETE ERROR:",
-                            error
-                        );
-
-                        showMessage(
-                            adminMessage,
-                            "Unable to delete applicant. Check your Firestore security rules.",
-                            "error"
-                        );
-
-                        deleteButton.disabled =
-                            false;
-
-                    }
-
-                }
-            );
-
-
-            adminApplicantList.appendChild(card);
-
-        });
-
-
-    } catch (error) {
-
-        console.error(
-            "ADMIN LIST ERROR:",
-            error
-        );
-
-        adminApplicantList.innerHTML =
-            '<div class="error">Unable to load applicants.</div>';
-
-    }
-
-}
-
-
-/* =========================================================
-   ADMIN MANUAL ADD
-========================================================= */
-
-manualAddForm.addEventListener(
-    "submit",
-    async (event) => {
-
-        event.preventDefault();
-
-
-        if (
-            !auth.currentUser ||
-            auth.currentUser.uid !== ADMIN_UID
-        ) {
-
-            showMessage(
-                adminMessage,
-                "You are not authorised to perform this action.",
-                "error"
-            );
-
-            return;
-        }
-
-
-        const name =
-            document
-                .getElementById("manualName")
-                .value
-                .trim();
-
-        const email =
-            document
-                .getElementById("manualEmail")
-                .value
-                .trim()
-                .toLowerCase();
-
-        const year =
-            document
-                .getElementById("manualYear")
-                .value;
-
-
-        if (!name || !email || !year) {
-
-            showMessage(
-                adminMessage,
-                "Please fill in all fields.",
-                "error"
-            );
-
-            return;
-        }
-
-
-        try {
-
-            const existingQuery =
-                query(
-                    collection(db, "applicants"),
-                    where("email", "==", email)
-                );
-
-
-            const existing =
-                await getDocs(existingQuery);
-
-
-            if (!existing.empty) {
-
-                showMessage(
-                    adminMessage,
-                    "An applicant with that email already exists.",
-                    "error"
-                );
-
-                return;
-            }
-
-
-            await addDoc(
-                collection(db, "applicants"),
-                {
-
-                    name: name,
-
-                    email: email,
-
-                    year: Number(year),
-
-                    verified: true,
-
-                    manuallyAdded: true,
-
-                    uid: null,
-
-                    createdAt:
-                        serverTimestamp()
-
-                }
-            );
-
-
-            manualAddForm.reset();
-
-
-            showMessage(
-                adminMessage,
-                "Applicant added successfully.",
-                "success"
-            );
-
-
-            await loadAdminApplicants();
-
-            await loadApplicants();
-
-
-        } catch (error) {
-
-            console.error(
-                "MANUAL ADD ERROR:",
-                error
-            );
-
-            showMessage(
-                adminMessage,
-                "Unable to add applicant. Check your Firestore security rules.",
-                "error"
-            );
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   LOGOUT
-========================================================= */
-
-logoutButton.addEventListener(
-    "click",
-    async () => {
-
-        await signOut(auth);
-
-        loginForm.reset();
-
-        loginMessage.textContent = "";
-
-    }
-);
-
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-function showMessage(
-    element,
-    message,
-    type
-) {
-
-    element.textContent =
-        message;
-
-    element.className =
-        "message " + type;
-
-}
-
-
-function escapeHTML(value) {
-
-    return String(value)
-
-        .replaceAll("&", "&amp;")
-
-        .replaceAll("<", "&lt;")
-
-        .replaceAll(">", "&gt;")
-
-        .replaceAll('"', "&quot;")
-
-        .replaceAll("'", "&#039;");
-
-}
-
-
-loadApplicants();
-
-</script>
-
-
 <style>
-
 * {
     box-sizing: border-box;
     margin: 0;
@@ -1042,13 +20,8 @@ loadApplicants();
 }
 
 body {
-    font-family:
-        Inter,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
     background: #f5f7fb;
     color: #172033;
     line-height: 1.6;
@@ -1060,19 +33,13 @@ body {
 }
 
 header {
-    background:
-        linear-gradient(
-            135deg,
-            #101828,
-            #243b64
-        );
+    background: linear-gradient(135deg, #101828, #243b64);
     color: white;
     padding: 80px 0;
 }
 
 header h1 {
-    font-size:
-        clamp(2.3rem, 6vw, 4.5rem);
+    font-size: clamp(2.3rem, 6vw, 4.5rem);
     line-height: 1.05;
     margin-bottom: 20px;
 }
@@ -1130,11 +97,7 @@ section h2 {
 
 .grid {
     display: grid;
-    grid-template-columns:
-        repeat(
-            auto-fit,
-            minmax(260px, 1fr)
-        );
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 22px;
 }
 
@@ -1143,8 +106,7 @@ section h2 {
     border: 1px solid #e5e7eb;
     border-radius: 18px;
     padding: 28px;
-    box-shadow:
-        0 8px 25px rgba(0,0,0,.04);
+    box-shadow: 0 8px 25px rgba(0,0,0,.04);
 }
 
 .card h3 {
@@ -1334,13 +296,6 @@ button:disabled {
     border-color: #4b5563;
 }
 
-footer {
-    padding: 35px 0;
-    background: #101828;
-    color: #98a2b3;
-    text-align: center;
-}
-
 .contact {
     margin-top: 20px;
     display: inline-block;
@@ -1349,8 +304,14 @@ footer {
     text-decoration: none;
 }
 
-@media(max-width:650px) {
+footer {
+    padding: 35px 0;
+    background: #101828;
+    color: #98a2b3;
+    text-align: center;
+}
 
+@media(max-width:650px) {
     header {
         padding: 55px 0;
     }
@@ -1363,29 +324,21 @@ footer {
         align-items: flex-start;
         flex-direction: column;
     }
-
 }
-
 </style>
-
 </head>
 
 <body>
 
 <nav>
 <div class="container">
-
-<strong>
-NBHS Accelerated Engineering
-</strong>
+<strong>NBHS Accelerated Engineering</strong>
 
 <a href="#signup">
 Express Interest →
 </a>
-
 </div>
 </nav>
-
 
 <header>
 <div class="container">
@@ -1408,14 +361,10 @@ for the course.
 </div>
 </header>
 
-
 <section>
-
 <div class="container">
 
-<h2>
-What is happening?
-</h2>
+<h2>What is happening?</h2>
 
 <p class="section-intro">
 
@@ -1433,12 +382,10 @@ staffing, timetabling and school approval.
 
 </p>
 
-
 <div class="grid">
 
 <div class="card">
 <h3>⚙️ What is Engineering Studies?</h3>
-
 <p>
 Engineering Studies is a Stage 6 subject that explores
 engineering concepts, design, materials, mechanics,
@@ -1446,10 +393,8 @@ electronics and engineering applications.
 </p>
 </div>
 
-
 <div class="card">
 <h3>🧠 Why take it?</h3>
-
 <p>
 Engineering Studies can provide an early foundation in
 engineering and physics-related concepts while developing
@@ -1457,10 +402,8 @@ practical design and problem-solving skills.
 </p>
 </div>
 
-
 <div class="card">
 <h3>🚀 Why accelerate?</h3>
-
 <p>
 Completing the course earlier could provide additional
 flexibility in Years 11 and 12, such as allowing another
@@ -1469,10 +412,8 @@ being completed later.
 </p>
 </div>
 
-
 <div class="card">
 <h3>📚 Physics foundation</h3>
-
 <p>
 Engineering Studies includes concepts that overlap with
 areas of physics, potentially providing useful groundwork
@@ -1481,7 +422,6 @@ for students interested in studying Physics.
 </div>
 
 </div>
-
 
 <a
 class="contact"
@@ -1495,9 +435,7 @@ View the NESA Engineering Studies syllabus →
 </div>
 </section>
 
-
 <section>
-
 <div class="container">
 
 <h2>How the process works</h2>
@@ -1506,83 +444,55 @@ View the NESA Engineering Studies syllabus →
 This is an expression of interest, not an enrolment form.
 </p>
 
-
 <div class="grid">
 
 <div class="card step">
-
 <div class="number">1</div>
-
 <h3>Express interest</h3>
-
-<p>
-Submit your name, email and year.
-</p>
-
+<p>Submit your name, email and year.</p>
 </div>
 
-
 <div class="card step">
-
 <div class="number">2</div>
-
 <h3>Verify</h3>
-
 <p>
-Verify your email to confirm that your expression of
-interest is genuine.
+Verify your email to confirm that your expression
+of interest is genuine.
 </p>
-
 </div>
 
-
 <div class="card step">
-
 <div class="number">3</div>
-
 <h3>Build the case</h3>
-
 <p>
 The number of genuine students interested helps demonstrate
 whether there is demand.
 </p>
-
 </div>
 
-
 <div class="card step">
-
 <div class="number">4</div>
-
 <h3>School decision</h3>
-
 <p>
 The school makes the final decision about whether the course
 can be offered.
 </p>
-
 </div>
 
 </div>
-
 </div>
 </section>
 
-
 <section>
-
 <div class="container">
 
-<h2>
-Who should consider expressing interest?
-</h2>
+<h2>Who should consider expressing interest?</h2>
 
 <p class="section-intro">
 Accelerated Engineering Studies is a significant commitment.
 Students should carefully consider whether they meet the
 following criteria.
 </p>
-
 
 <div class="card">
 
@@ -1629,40 +539,35 @@ displayed.
 The final decision regarding the course is made by the school.
 </li>
 
+<li>
+Students should have strong STEM and/or engineering
+foundations.
+</li>
+
 </ol>
 
 </div>
-
 </div>
 </section>
-
 
 <section id="signup">
 
 <div class="container">
 
-<h2>
-Want to express interest?
-</h2>
+<h2>Want to express interest?</h2>
 
 <p class="section-intro">
-
 Fill out the form below. You will receive an email asking
 you to verify your address. Please check your spam/junk
-folder if you don't see it.
-
+folder if you do not see it shortly.
 </p>
-
 
 <div class="card">
 
 <form id="signupForm">
 
 <div>
-
-<label for="studentName">
-Name
-</label>
+<label for="studentName">Name</label>
 
 <input
 id="studentName"
@@ -1670,15 +575,10 @@ type="text"
 placeholder="Your full name"
 required
 >
-
 </div>
 
-
 <div>
-
-<label for="studentEmail">
-Email
-</label>
+<label for="studentEmail">Email</label>
 
 <input
 id="studentEmail"
@@ -1686,15 +586,10 @@ type="email"
 placeholder="your.email@example.com"
 required
 >
-
 </div>
 
-
 <div>
-
-<label for="studentYear">
-Year
-</label>
+<label for="studentYear">Year</label>
 
 <select id="studentYear" required>
 
@@ -1711,14 +606,9 @@ Year 9
 </option>
 
 </select>
-
 </div>
 
-
-<h3>
-Conditions
-</h3>
-
+<h3>Conditions</h3>
 
 <div
 class="conditions"
@@ -1726,79 +616,68 @@ id="conditionsBox"
 >
 
 <h3>1. Accelerated courses</h3>
-
 <p>
 Students should not already be committed to another
 accelerated course unless they are willing to give it
 up if required.
 </p>
 
-
 <h3>2. Academic excellence</h3>
-
 <p>
 Students should have demonstrated strong academic
 performance.
 </p>
 
-
 <h3>3. Time and commitment</h3>
-
 <p>
 Engineering Studies requires genuine time, effort and
 commitment.
 </p>
 
-
 <h3>4. Commitment if invited</h3>
-
 <p>
 Students expressing genuine interest should be prepared
 to accept an invitation if one is offered.
 </p>
 
-
 <h3>5. School approval</h3>
-
 <p>
 The course is subject to approval by Normanhurst Boys
 High School.
 </p>
 
-
 <h3>6. Accurate information</h3>
-
 <p>
 All information submitted must be accurate and truthful.
 </p>
 
-
 <h3>7. No guarantee</h3>
-
 <p>
 Expressing interest does not guarantee that the course
 will be offered.
 </p>
 
-
 <h3>8. Visibility</h3>
-
 <p>
 Student names and years may be displayed to demonstrate
 interest. Email addresses will only be accessible to
 authorised administrators.
 </p>
 
-
 <h3>9. Final decision</h3>
-
 <p>
 The school retains the final decision regarding whether
 the course will proceed.
 </p>
 
-</div>
+<h3>10. STEM foundations</h3>
+<p>
+Students should have strong STEM and/or engineering
+foundations appropriate to the accelerated nature of
+the course.
+</p>
 
+</div>
 
 <label class="accept">
 
@@ -1816,7 +695,6 @@ will be offered.
 
 </label>
 
-
 <button
 id="signupButton"
 type="submit"
@@ -1824,7 +702,6 @@ disabled
 >
 Express Interest
 </button>
-
 
 <div
 id="signupMessage"
@@ -1834,24 +711,19 @@ class="message"
 </form>
 
 </div>
-
 </div>
 </section>
-
 
 <section>
 
 <div class="container">
 
-<h2>
-Current interest
-</h2>
+<h2>Current interest</h2>
 
 <p class="section-intro">
 Students who have expressed interest are shown below.
 This list is intended to demonstrate student demand.
 </p>
-
 
 <div
 class="count"
@@ -1859,7 +731,6 @@ id="applicantCount"
 >
 0
 </div>
-
 
 <div
 class="applicant-list"
@@ -1869,22 +740,18 @@ id="applicantList"
 </div>
 </section>
 
-
 <section>
 
 <div class="container">
 
 <div class="card">
 
-<h2>
-Want to ask a question?
-</h2>
+<h2>Want to ask a question?</h2>
 
 <p>
-If you have a question about the expression of interest,
-contact Darrel.
+If you have a question about the petition or expression
+of interest, contact Darrel.
 </p>
-
 
 <a
 class="contact"
@@ -1894,10 +761,8 @@ Ask a question →
 </a>
 
 </div>
-
 </div>
 </section>
-
 
 <section id="loginSection">
 
@@ -1905,15 +770,12 @@ Ask a question →
 
 <div class="card">
 
-<h2>
-Administrator
-</h2>
+<h2>Administrator</h2>
 
 <p class="section-intro">
 Authorised administrators can manage the expression-of-
 interest list.
 </p>
-
 
 <form id="loginForm">
 
@@ -1935,45 +797,36 @@ required
 Log in
 </button>
 
-
 <div
 id="loginMessage"
 class="message"
 ></div>
 
 </form>
-
 </div>
-
 </div>
 </section>
-
 
 <section id="adminPanel">
 
 <div class="container">
 
-<h2>
-Administrator Panel
-</h2>
+<h2>Administrator Panel</h2>
 
 <p class="section-intro">
 This information is restricted to authorised administrators.
 </p>
 
-
 <div class="admin-box">
 
-<h3>
-Add applicant manually
-</h3>
+<h3>Add applicant manually</h3>
 
 <p>
 Manually adding someone does not send a verification email.
-The applicant is immediately saved to Firebase and marked
-as verified.
+The applicant is immediately saved to Firebase.
 </p>
 
+<br>
 
 <form id="manualAddForm">
 
@@ -2007,11 +860,9 @@ Year 9
 
 </select>
 
-
 <button type="submit">
 Add Applicant
 </button>
-
 
 <div
 id="adminMessage"
@@ -2019,20 +870,15 @@ class="message"
 ></div>
 
 </form>
-
 </div>
-
 
 <div class="admin-box">
 
-<h3>
-Applicants
-</h3>
+<h3>Applicants</h3>
 
 <div id="adminApplicantList"></div>
 
 </div>
-
 
 <button id="logoutButton">
 Log out
@@ -2041,20 +887,1024 @@ Log out
 </div>
 </section>
 
-
 <footer>
 
 <div class="container">
-
 NBHS Accelerated Engineering Studies
-
 <br>
-
 Student expression of interest portal
-
 </div>
 
 </footer>
+
+<script type="module">
+
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+
+import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    sendEmailVerification,
+    onAuthStateChanged,
+    reload
+}
+from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc,
+    query,
+    orderBy,
+    serverTimestamp,
+    where
+}
+from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+
+const firebaseConfig = {
+
+    apiKey:
+        "AIzaSyDLLOZp-9G4fm-GqPn8JJ2DtLTXca-C5BY",
+
+    authDomain:
+        "engineeringstudieseoi.firebaseapp.com",
+
+    projectId:
+        "engineeringstudieseoi",
+
+    storageBucket:
+        "engineeringstudieseoi.firebasestorage.app",
+
+    messagingSenderId:
+        "692995755223",
+
+    appId:
+        "1:692995755223:web:ab00efbc1c3d6f2e74f492"
+
+};
+
+
+const app = initializeApp(firebaseConfig);
+
+const auth = getAuth(app);
+
+const db = getFirestore(app);
+
+
+/* =========================================================
+   ADMIN UID
+========================================================= */
+
+const ADMIN_UID =
+    "jF8j9cYT1kMBkMG9rbTYLj9E6bI2";
+
+
+/* =========================================================
+   ELEMENTS
+========================================================= */
+
+const signupForm =
+    document.getElementById("signupForm");
+
+const signupMessage =
+    document.getElementById("signupMessage");
+
+const signupButton =
+    document.getElementById("signupButton");
+
+const loginForm =
+    document.getElementById("loginForm");
+
+const loginMessage =
+    document.getElementById("loginMessage");
+
+const loginSection =
+    document.getElementById("loginSection");
+
+const adminPanel =
+    document.getElementById("adminPanel");
+
+const applicantList =
+    document.getElementById("applicantList");
+
+const applicantCount =
+    document.getElementById("applicantCount");
+
+const adminApplicantList =
+    document.getElementById("adminApplicantList");
+
+const manualAddForm =
+    document.getElementById("manualAddForm");
+
+const adminMessage =
+    document.getElementById("adminMessage");
+
+const logoutButton =
+    document.getElementById("logoutButton");
+
+const conditionsBox =
+    document.getElementById("conditionsBox");
+
+const acceptConditions =
+    document.getElementById("acceptConditions");
+
+
+/* =========================================================
+   CONDITIONS
+========================================================= */
+
+let conditionsRead = false;
+
+conditionsBox.addEventListener("scroll", () => {
+
+    const reachedBottom =
+        conditionsBox.scrollTop +
+        conditionsBox.clientHeight >=
+        conditionsBox.scrollHeight - 10;
+
+    if (reachedBottom) {
+
+        conditionsRead = true;
+
+        acceptConditions.disabled = false;
+
+    }
+
+});
+
+
+acceptConditions.addEventListener("change", () => {
+
+    signupButton.disabled =
+        !(conditionsRead && acceptConditions.checked);
+
+});
+
+
+/* =========================================================
+   TEMP PASSWORD
+========================================================= */
+
+function generateTemporaryPassword() {
+
+    return crypto.randomUUID() + "Aa1!";
+
+}
+
+
+/* =========================================================
+   SIGNUP
+========================================================= */
+
+signupForm.addEventListener("submit", async (event) => {
+
+    event.preventDefault();
+
+    if (!conditionsRead) {
+
+        showMessage(
+            signupMessage,
+            "Please scroll to the bottom of the conditions first.",
+            "error"
+        );
+
+        return;
+    }
+
+    if (!acceptConditions.checked) {
+
+        showMessage(
+            signupMessage,
+            "Please accept the conditions.",
+            "error"
+        );
+
+        return;
+    }
+
+    const name =
+        document.getElementById("studentName").value.trim();
+
+    const email =
+        document.getElementById("studentEmail")
+            .value.trim()
+            .toLowerCase();
+
+    const year =
+        document.getElementById("studentYear").value;
+
+
+    if (!name || !email || !year) {
+
+        showMessage(
+            signupMessage,
+            "Please complete all fields.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    if (!["8", "9"].includes(year)) {
+
+        showMessage(
+            signupMessage,
+            "Only Year 8 and Year 9 students can apply.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    signupButton.disabled = true;
+
+    showMessage(
+        signupMessage,
+        "Submitting your expression of interest...",
+        "normal"
+    );
+
+
+    try {
+
+        const existingQuery = query(
+            collection(db, "applicants"),
+            where("email", "==", email)
+        );
+
+        const existing =
+            await getDocs(existingQuery);
+
+
+        if (!existing.empty) {
+
+            showMessage(
+                signupMessage,
+                "That email address has already expressed interest.",
+                "error"
+            );
+
+            signupButton.disabled = false;
+
+            return;
+        }
+
+
+        const temporaryPassword =
+            generateTemporaryPassword();
+
+
+        const userCredential =
+            await createUserWithEmailAndPassword(
+                auth,
+                email,
+                temporaryPassword
+            );
+
+
+        const user =
+            userCredential.user;
+
+
+        /*
+           The verification email is sent immediately.
+           The link points through Firebase's email-action
+           handler and ultimately to verification.html.
+        */
+
+        const actionCodeSettings = {
+
+            url:
+                `${window.location.origin}/verification.html`,
+
+            handleCodeInApp:
+                false
+
+        };
+
+
+        await sendEmailVerification(
+            user,
+            actionCodeSettings
+        );
+
+
+        /*
+           Save applicant.
+        */
+
+        await addDoc(
+            collection(db, "applicants"),
+            {
+
+                name,
+
+                year: Number(year),
+
+                email,
+
+                uid: user.uid,
+
+                /*
+                   This starts false.
+                   Firebase Authentication's emailVerified
+                   is the authoritative verification state.
+                */
+
+                verified: false,
+
+                manuallyAdded: false,
+
+                createdAt: serverTimestamp()
+
+            }
+        );
+
+
+        await signOut(auth);
+
+
+        showMessage(
+            signupMessage,
+            "You're on the list! A verification email was sent immediately. Please check your inbox and your spam/junk folder, then click the verification link.",
+            "success"
+        );
+
+
+        signupForm.reset();
+
+        conditionsBox.scrollTop = 0;
+
+        conditionsRead = false;
+
+        acceptConditions.checked = false;
+
+        acceptConditions.disabled = true;
+
+        signupButton.disabled = true;
+
+
+        await loadApplicants();
+
+
+    } catch (error) {
+
+        console.error(
+            "SIGNUP ERROR:",
+            error
+        );
+
+
+        let message =
+            "Something went wrong while submitting your expression of interest.";
+
+
+        switch (error.code) {
+
+            case "auth/email-already-in-use":
+
+                message =
+                    "That email address already has a Firebase account. If you have already expressed interest, you do not need to submit again.";
+
+                break;
+
+            case "auth/invalid-email":
+
+                message =
+                    "Please enter a valid email address.";
+
+                break;
+
+            case "auth/operation-not-allowed":
+
+                message =
+                    "Email/password authentication is not enabled in Firebase Authentication.";
+
+                break;
+
+            case "auth/network-request-failed":
+
+                message =
+                    "There was a network problem. Check your internet connection.";
+
+                break;
+
+            case "auth/too-many-requests":
+
+                message =
+                    "Too many attempts have been made. Please wait a little while and try again.";
+
+                break;
+
+            case "auth/unauthorized-continue-uri":
+
+                message =
+                    "Firebase rejected the verification page URL. Add this website's domain to Firebase Authentication → Settings → Authorized domains.";
+
+                break;
+
+            case "auth/invalid-continue-uri":
+
+                message =
+                    "The verification page URL is not valid.";
+
+                break;
+
+            case "auth/missing-continue-uri":
+
+                message =
+                    "The verification email could not be configured correctly.";
+
+                break;
+
+        }
+
+
+        showMessage(
+            signupMessage,
+            message,
+            "error"
+        );
+
+        signupButton.disabled = false;
+
+    }
+
+});
+
+
+/* =========================================================
+   PUBLIC APPLICANTS
+========================================================= */
+
+async function loadApplicants() {
+
+    applicantList.innerHTML =
+        '<div class="loading">Loading...</div>';
+
+
+    try {
+
+        const q = query(
+            collection(db, "applicants"),
+            orderBy("createdAt", "asc")
+        );
+
+
+        const snapshot =
+            await getDocs(q);
+
+
+        applicantList.innerHTML = "";
+
+        applicantCount.textContent =
+            snapshot.size;
+
+
+        if (snapshot.empty) {
+
+            applicantList.innerHTML =
+                '<div class="empty">No students have expressed interest yet.</div>';
+
+            return;
+        }
+
+
+        snapshot.forEach((applicant) => {
+
+            const data =
+                applicant.data();
+
+
+            const card =
+                document.createElement("div");
+
+            card.className =
+                "applicant";
+
+
+            card.innerHTML = `
+
+                <div>
+
+                    <strong>
+                        ${escapeHTML(data.name || "Unknown")}
+                    </strong>
+
+                    <span>
+                        Year ${escapeHTML(String(data.year || ""))}
+                    </span>
+
+                </div>
+
+            `;
+
+
+            applicantList.appendChild(card);
+
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "PUBLIC LIST ERROR:",
+            error
+        );
+
+
+        applicantList.innerHTML =
+            '<div class="error">Unable to load the current list.</div>';
+
+    }
+
+}
+
+
+/* =========================================================
+   ADMIN LOGIN
+========================================================= */
+
+loginForm.addEventListener("submit", async (event) => {
+
+    event.preventDefault();
+
+
+    const email =
+        document.getElementById("adminEmail")
+            .value.trim();
+
+    const password =
+        document.getElementById("adminPassword")
+            .value;
+
+
+    try {
+
+        const credential =
+            await signInWithEmailAndPassword(
+                auth,
+                email,
+                password
+            );
+
+
+        if (
+            credential.user.uid !==
+            ADMIN_UID
+        ) {
+
+            await signOut(auth);
+
+            showMessage(
+                loginMessage,
+                "This account is not authorised to access the administrator panel.",
+                "error"
+            );
+
+            return;
+        }
+
+
+        showMessage(
+            loginMessage,
+            "Logged in successfully.",
+            "success"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "LOGIN ERROR:",
+            error
+        );
+
+
+        showMessage(
+            loginMessage,
+            "Invalid administrator login details.",
+            "error"
+        );
+
+    }
+
+});
+
+
+/* =========================================================
+   AUTH STATE
+========================================================= */
+
+onAuthStateChanged(auth, async (user) => {
+
+    if (!user) {
+
+        loginSection.style.display =
+            "block";
+
+        adminPanel.style.display =
+            "none";
+
+        return;
+    }
+
+
+    if (user.uid !== ADMIN_UID) {
+
+        await signOut(auth);
+
+        return;
+
+    }
+
+
+    loginSection.style.display =
+        "none";
+
+    adminPanel.style.display =
+        "block";
+
+
+    await loadAdminApplicants();
+
+});
+
+
+/* =========================================================
+   ADMIN APPLICANTS
+========================================================= */
+
+async function loadAdminApplicants() {
+
+    adminApplicantList.innerHTML =
+        '<div class="loading">Loading applicants...</div>';
+
+
+    try {
+
+        const q = query(
+            collection(db, "applicants"),
+            orderBy("createdAt", "desc")
+        );
+
+
+        const snapshot =
+            await getDocs(q);
+
+
+        adminApplicantList.innerHTML = "";
+
+
+        if (snapshot.empty) {
+
+            adminApplicantList.innerHTML =
+                '<div class="empty">No applicants.</div>';
+
+            return;
+
+        }
+
+
+        snapshot.forEach((applicant) => {
+
+            const data =
+                applicant.data();
+
+
+            const card =
+                document.createElement("div");
+
+            card.className =
+                "admin-applicant";
+
+
+            card.innerHTML = `
+
+                <div class="admin-info">
+
+                    <strong>
+                        ${escapeHTML(data.name || "Unknown")}
+                    </strong>
+
+                    <span>
+                        Year ${escapeHTML(String(data.year || ""))}
+                    </span>
+
+                    <span>
+                        ${escapeHTML(data.email || "No email")}
+                    </span>
+
+                    <small>
+                        ${
+                            data.verified
+                                ? "✓ Verified"
+                                : "⚠ Not verified"
+                        }
+                    </small>
+
+                    ${
+                        data.manuallyAdded
+                            ? "<small>Added by administrator</small>"
+                            : ""
+                    }
+
+                </div>
+
+                <button
+                    class="danger-button"
+                    type="button"
+                >
+                    Delete
+                </button>
+
+            `;
+
+
+            const deleteButton =
+                card.querySelector(".danger-button");
+
+
+            deleteButton.addEventListener(
+                "click",
+                async () => {
+
+                    const confirmed =
+                        confirm(
+                            `Delete ${data.name} from the applicant list?`
+                        );
+
+
+                    if (!confirmed)
+                        return;
+
+
+                    deleteButton.disabled =
+                        true;
+
+
+                    try {
+
+                        await deleteDoc(
+                            doc(
+                                db,
+                                "applicants",
+                                applicant.id
+                            )
+                        );
+
+
+                        showMessage(
+                            adminMessage,
+                            "Applicant deleted.",
+                            "success"
+                        );
+
+
+                        await loadAdminApplicants();
+
+                        await loadApplicants();
+
+
+                    } catch (error) {
+
+                        console.error(
+                            "DELETE ERROR:",
+                            error
+                        );
+
+
+                        showMessage(
+                            adminMessage,
+                            "Unable to delete applicant. Check your Firestore security rules.",
+                            "error"
+                        );
+
+
+                        deleteButton.disabled =
+                            false;
+
+                    }
+
+                }
+            );
+
+
+            adminApplicantList.appendChild(card);
+
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "ADMIN LIST ERROR:",
+            error
+        );
+
+
+        adminApplicantList.innerHTML =
+            '<div class="error">Unable to load applicants.</div>';
+
+    }
+
+}
+
+
+/* =========================================================
+   ADMIN MANUAL ADD
+========================================================= */
+
+manualAddForm.addEventListener("submit", async (event) => {
+
+    event.preventDefault();
+
+
+    if (
+        !auth.currentUser ||
+        auth.currentUser.uid !== ADMIN_UID
+    ) {
+
+        showMessage(
+            adminMessage,
+            "You are not authorised to perform this action.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    const name =
+        document.getElementById("manualName")
+            .value.trim();
+
+    const email =
+        document.getElementById("manualEmail")
+            .value.trim()
+            .toLowerCase();
+
+    const year =
+        document.getElementById("manualYear").value;
+
+
+    if (!name || !email || !year) {
+
+        showMessage(
+            adminMessage,
+            "Please fill in all fields.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        const existingQuery =
+            query(
+                collection(db, "applicants"),
+                where("email", "==", email)
+            );
+
+
+        const existing =
+            await getDocs(existingQuery);
+
+
+        if (!existing.empty) {
+
+            showMessage(
+                adminMessage,
+                "An applicant with that email already exists.",
+                "error"
+            );
+
+            return;
+
+        }
+
+
+        await addDoc(
+            collection(db, "applicants"),
+            {
+
+                name,
+
+                email,
+
+                year: Number(year),
+
+                verified: true,
+
+                manuallyAdded: true,
+
+                uid: null,
+
+                createdAt: serverTimestamp()
+
+            }
+        );
+
+
+        manualAddForm.reset();
+
+
+        showMessage(
+            adminMessage,
+            "Applicant added successfully.",
+            "success"
+        );
+
+
+        await loadAdminApplicants();
+
+        await loadApplicants();
+
+
+    } catch (error) {
+
+        console.error(
+            "MANUAL ADD ERROR:",
+            error
+        );
+
+
+        showMessage(
+            adminMessage,
+            "Unable to add applicant. Check your Firestore security rules.",
+            "error"
+        );
+
+    }
+
+});
+
+
+/* =========================================================
+   LOGOUT
+========================================================= */
+
+logoutButton.addEventListener(
+    "click",
+    async () => {
+
+        await signOut(auth);
+
+        loginForm.reset();
+
+        loginMessage.textContent = "";
+
+    }
+);
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function showMessage(
+    element,
+    message,
+    type
+) {
+
+    element.textContent =
+        message;
+
+    element.className =
+        "message " + type;
+
+}
+
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+
+loadApplicants();
+
+</script>
 
 </body>
 </html>
