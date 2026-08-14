@@ -1,1267 +1,1940 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Accelerated Engineering Studies — NBHS</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- =========================
-         FIREBASE
-         ========================= -->
-    <script type="module">
-        import { initializeApp } from
-        "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+<title>Accelerated Engineering Studies — NBHS</title>
 
-        import {
-            getAuth,
-            createUserWithEmailAndPassword,
-            sendEmailVerification,
-            signInWithEmailAndPassword,
-            signOut,
-            onAuthStateChanged
-        } from
-        "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+<script type="module">
 
-        import {
-            getFirestore,
-            collection,
-            addDoc,
-            getDocs,
-            query,
-            orderBy,
-            serverTimestamp,
-            doc,
-            deleteDoc
-        } from
-        "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 
+import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    sendEmailVerification,
+    onAuthStateChanged,
+    reload
+}
+from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
-        // ==========================================================
-        // PASTE YOUR FIREBASE CONFIG HERE
-        // Firebase Console → Project settings → Your apps → Web app
-        // ==========================================================
-
-        const firebaseConfig = {
-          apiKey: "AIzaSyDLLOZp-9G4fm-GqPn8JJ2DtLTXca-C5BY",
-  authDomain: "engineeringstudieseoi.firebaseapp.com",
-  projectId: "engineeringstudieseoi",
-  storageBucket: "engineeringstudieseoi.firebasestorage.app",
-  messagingSenderId: "692995755223",
-  appId: "1:692995755223:web:ab00efbc1c3d6f2e74f492",
-        };
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc,
+    query,
+    orderBy,
+    serverTimestamp
+}
+from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 
-        // ==========================================================
-        // INITIALISE FIREBASE
-        // ==========================================================
+/* =========================================================
+   FIREBASE CONFIG
+========================================================= */
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-
-        // ==========================================================
-        // IMPORTANT:
-        // PUT YOUR FIREBASE AUTH UID HERE AFTER CREATING YOUR ADMIN
-        //
-        // Firebase Console → Authentication → Users
-        // Copy your UID.
-        // ==========================================================
-
-        const ADMIN_UID = "jF8j9cYT1kMBkMG9rbTYLj9E6bI2";
+const firebaseConfig = {
+    apiKey: "AIzaSyDLLOZp-9G4fm-GqPn8JJ2DtLTXca-C5BY",
+    authDomain: "engineeringstudieseoi.firebaseapp.com",
+    projectId: "engineeringstudieseoi",
+    storageBucket: "engineeringstudieseoi.firebasestorage.app",
+    messagingSenderId: "692995755223",
+    appId: "1:692995755223:web:ab00efbc1c3d6f2e74f492"
+};
 
 
-        // ==========================================================
-        // ELEMENTS
-        // ==========================================================
+/* =========================================================
+   ADMIN UID
+   REPLACE THIS WITH YOUR ACTUAL FIREBASE USER UID
+========================================================= */
 
-        const form = document.getElementById("interestForm");
-        const nameInput = document.getElementById("name");
-        const emailInput = document.getElementById("email");
-        const yearInput = document.getElementById("year");
-
-        const conditionsBox = document.getElementById("conditionsBox");
-        const acceptCheckbox = document.getElementById("acceptConditions");
-        const submitButton = document.getElementById("submitButton");
-
-        const statusMessage = document.getElementById("statusMessage");
-        const interestCount = document.getElementById("interestCount");
-        const studentList = document.getElementById("studentList");
-
-        const loginSection = document.getElementById("adminSection");
-        const adminLoginForm = document.getElementById("adminLoginForm");
-
-        const adminEmail = document.getElementById("adminEmail");
-        const adminPassword = document.getElementById("adminPassword");
-
-        const adminStatus = document.getElementById("adminStatus");
-        const adminPanel = document.getElementById("adminPanel");
-
-        const adminStudentList = document.getElementById("adminStudentList");
-
-        const logoutButton = document.getElementById("logoutButton");
+const ADMIN_UID = "jF8j9cYT1kMBkMG9rbTYLj9E6bI2";
 
 
-        // ==========================================================
-        // CONDITIONS SCROLL
-        // ==========================================================
+/* =========================================================
+   INITIALISE FIREBASE
+========================================================= */
 
-        acceptCheckbox.disabled = true;
-        submitButton.disabled = true;
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-        conditionsBox.addEventListener("scroll", () => {
 
-            const reachedBottom =
-                conditionsBox.scrollTop + conditionsBox.clientHeight
-                >= conditionsBox.scrollHeight - 10;
+/* =========================================================
+   DOM ELEMENTS
+========================================================= */
 
-            if (reachedBottom) {
-                acceptCheckbox.disabled = false;
+const signupForm = document.getElementById("signupForm");
+const signupMessage = document.getElementById("signupMessage");
 
-                document.getElementById("scrollMessage").textContent =
-                    "✓ You have reached the bottom. You can now accept the conditions.";
+const loginForm = document.getElementById("loginForm");
+const loginMessage = document.getElementById("loginMessage");
+
+const loginSection = document.getElementById("loginSection");
+const adminPanel = document.getElementById("adminPanel");
+
+const applicantList = document.getElementById("applicantList");
+const applicantCount = document.getElementById("applicantCount");
+
+const manualAddForm = document.getElementById("manualAddForm");
+const adminMessage = document.getElementById("adminMessage");
+
+const logoutButton = document.getElementById("logoutButton");
+
+const conditionsBox = document.getElementById("conditionsBox");
+const acceptConditions = document.getElementById("acceptConditions");
+const signupButton = document.getElementById("signupButton");
+
+const adminApplicantList =
+    document.getElementById("adminApplicantList");
+
+
+/* =========================================================
+   CONDITIONS SCROLL
+========================================================= */
+
+let conditionsRead = false;
+
+conditionsBox.addEventListener("scroll", () => {
+
+    const reachedBottom =
+        conditionsBox.scrollTop +
+        conditionsBox.clientHeight >=
+        conditionsBox.scrollHeight - 10;
+
+    if (reachedBottom) {
+
+        conditionsRead = true;
+
+        acceptConditions.disabled = false;
+
+        updateSignupButton();
+    }
+});
+
+
+acceptConditions.addEventListener("change", updateSignupButton);
+
+
+function updateSignupButton() {
+
+    signupButton.disabled =
+        !(conditionsRead && acceptConditions.checked);
+}
+
+
+/* =========================================================
+   STUDENT SIGNUP
+========================================================= */
+
+signupForm.addEventListener("submit", async (event) => {
+
+    event.preventDefault();
+
+    if (!conditionsRead) {
+
+        showMessage(
+            signupMessage,
+            "Please scroll through the conditions before accepting them.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    if (!acceptConditions.checked) {
+
+        showMessage(
+            signupMessage,
+            "You must accept the conditions to express interest.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    const name =
+        document.getElementById("studentName")
+        .value.trim();
+
+    const email =
+        document.getElementById("studentEmail")
+        .value.trim()
+        .toLowerCase();
+
+    const year =
+        document.getElementById("studentYear").value;
+
+
+    if (!name || !email || !year) {
+
+        showMessage(
+            signupMessage,
+            "Please complete all fields.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    signupButton.disabled = true;
+
+    showMessage(
+        signupMessage,
+        "Creating your expression of interest...",
+        "normal"
+    );
+
+
+    try {
+
+        /*
+         * Create a Firebase Authentication account.
+         *
+         * A random password is generated because students
+         * are not being asked to create a normal login account.
+         */
+
+        const randomPassword =
+            crypto.randomUUID() + "Aa1!";
+
+
+        const userCredential =
+            await createUserWithEmailAndPassword(
+                auth,
+                email,
+                randomPassword
+            );
+
+
+        const user = userCredential.user;
+
+
+        /*
+         * Send verification email.
+         */
+
+        await sendEmailVerification(user);
+
+
+        /*
+         * Store PUBLIC information.
+         *
+         * No email address is stored here.
+         */
+
+        await addDoc(
+            collection(db, "publicApplicants"),
+            {
+                name: name,
+                year: Number(year),
+                createdAt: serverTimestamp()
             }
-        });
+        );
 
 
-        acceptCheckbox.addEventListener("change", () => {
-            submitButton.disabled = !acceptCheckbox.checked;
-        });
+        /*
+         * Store PRIVATE information.
+         *
+         * Only the admin can read this collection.
+         */
 
-
-        // ==========================================================
-        // SIGN UP
-        // ==========================================================
-
-        form.addEventListener("submit", async (event) => {
-
-            event.preventDefault();
-
-            const name = nameInput.value.trim();
-            const email = emailInput.value.trim();
-            const year = yearInput.value;
-
-            if (!name || !email || !year) {
-                showStatus("Please complete all fields.", "error");
-                return;
+        await addDoc(
+            collection(db, "privateApplicants"),
+            {
+                name: name,
+                year: Number(year),
+                email: email,
+                uid: user.uid,
+                verified: user.emailVerified,
+                verificationRequested: true,
+                manuallyAdded: false,
+                createdAt: serverTimestamp()
             }
-
-            if (!acceptCheckbox.checked) {
-                showStatus("Please read and accept the conditions.", "error");
-                return;
-            }
-
-            submitButton.disabled = true;
-            submitButton.textContent = "Submitting...";
-
-            try {
-
-                /*
-                 * Firebase Authentication requires a password for the
-                 * normal email/password method.
-                 *
-                 * We generate a random temporary password.
-                 * The student receives an email verification link.
-                 *
-                 * Their actual account password is never shown.
-                 */
-
-                const temporaryPassword =
-                    crypto.randomUUID() +
-                    crypto.randomUUID() +
-                    "Aa1!";
-
-                const userCredential =
-                    await createUserWithEmailAndPassword(
-                        auth,
-                        email,
-                        temporaryPassword
-                    );
-
-                const user = userCredential.user;
+        );
 
 
-                // Send verification email
-                await sendEmailVerification(user);
+        showMessage(
+            signupMessage,
+            "You're on the list! Check your school email and verify your email address to confirm your interest.",
+            "success"
+        );
 
 
-                // Save interest in Firestore
-                await addDoc(collection(db, "interests"), {
-                    name: name,
-                    email: email,
-                    year: year,
-                    uid: user.uid,
-                    verified: false,
-                    createdAt: serverTimestamp()
-                });
+        signupForm.reset();
+
+        acceptConditions.checked = false;
+        acceptConditions.disabled = true;
+
+        conditionsRead = false;
+
+        signupButton.disabled = true;
 
 
-                showStatus(
-                    "Success! Check your email and verify your email address. " +
-                    "Your expression of interest has been recorded.",
-                    "success"
-                );
+        await signOut(auth);
+
+        loadPublicApplicants();
 
 
-                form.reset();
+    } catch (error) {
 
-                acceptCheckbox.checked = false;
-                acceptCheckbox.disabled = true;
-                submitButton.disabled = true;
-                submitButton.textContent = "Express My Interest";
+        console.error(error);
 
-                await signOut(auth);
-
-                loadPublicInterests();
-
-            } catch (error) {
-
-                console.error(error);
-
-                let message = "Something went wrong.";
-
-                if (error.code === "auth/email-already-in-use") {
-                    message =
-                        "That email address has already been used to express interest.";
-                }
-
-                if (error.code === "auth/invalid-email") {
-                    message = "Please enter a valid email address.";
-                }
-
-                showStatus(message, "error");
-
-                submitButton.disabled = false;
-                submitButton.textContent = "Express My Interest";
-            }
-        });
+        let message =
+            "Something went wrong. Please try again.";
 
 
-        // ==========================================================
-        // PUBLIC INTEREST LIST
-        // ==========================================================
+        if (error.code === "auth/email-already-in-use") {
 
-        async function loadPublicInterests() {
+            message =
+                "That email has already been used to express interest.";
 
-            try {
+        } else if (error.code === "auth/invalid-email") {
 
-                const q = query(
-                    collection(db, "interests"),
-                    orderBy("createdAt", "desc")
-                );
+            message =
+                "Please enter a valid school email address.";
 
-                const snapshot = await getDocs(q);
+        } else if (error.code === "auth/weak-password") {
 
-                interestCount.textContent = snapshot.size;
+            message =
+                "There was a problem creating your verification account.";
 
-                studentList.innerHTML = "";
+        } else if (error.code === "permission-denied") {
 
-                if (snapshot.empty) {
-
-                    studentList.innerHTML =
-                        `<div class="empty">
-                            No expressions of interest yet.
-                         </div>`;
-
-                    return;
-                }
-
-
-                snapshot.forEach((document) => {
-
-                    const data = document.data();
-
-                    const card = document.createElement("div");
-                    card.className = "student-card";
-
-                    /*
-                     * Only show name and year publicly.
-                     * DO NOT publicly display email addresses.
-                     */
-
-                    card.innerHTML = `
-                        <div>
-                            <strong>${escapeHTML(data.name)}</strong>
-                            <span>Year ${escapeHTML(data.year)}</span>
-                        </div>
-                    `;
-
-                    studentList.appendChild(card);
-                });
-
-            } catch (error) {
-
-                console.error(error);
-
-                studentList.innerHTML =
-                    `<div class="empty">
-                        Unable to load the current list.
-                     </div>`;
-            }
+            message =
+                "The database rejected the submission. Please contact the administrator.";
         }
 
 
-        // ==========================================================
-        // ADMIN LOGIN
-        // ==========================================================
+        showMessage(
+            signupMessage,
+            message,
+            "error"
+        );
 
-        adminLoginForm.addEventListener("submit", async (event) => {
+        signupButton.disabled = false;
+    }
 
-            event.preventDefault();
+});
 
-            const email = adminEmail.value.trim();
-            const password = adminPassword.value;
 
-            adminStatus.textContent = "Logging in...";
+/* =========================================================
+   PUBLIC APPLICANTS
+========================================================= */
 
-            try {
+async function loadPublicApplicants() {
 
-                await signInWithEmailAndPassword(
-                    auth,
-                    email,
-                    password
-                );
+    applicantList.innerHTML =
+        '<div class="loading">Loading...</div>';
 
-            } catch (error) {
 
-                console.error(error);
+    try {
 
-                adminStatus.textContent =
-                    "Login failed. Check your credentials.";
-            }
+        const q = query(
+            collection(db, "publicApplicants"),
+            orderBy("createdAt", "asc")
+        );
+
+
+        const snapshot =
+            await getDocs(q);
+
+
+        applicantList.innerHTML = "";
+
+        applicantCount.textContent =
+            snapshot.size;
+
+
+        if (snapshot.empty) {
+
+            applicantList.innerHTML =
+                '<div class="empty">No students have expressed interest yet.</div>';
+
+            return;
+        }
+
+
+        snapshot.forEach((applicant) => {
+
+            const data =
+                applicant.data();
+
+
+            const card =
+                document.createElement("div");
+
+            card.className =
+                "applicant";
+
+
+            const name =
+                escapeHTML(data.name);
+
+            const year =
+                escapeHTML(String(data.year));
+
+
+            card.innerHTML = `
+                <div>
+                    <strong>${name}</strong>
+                    <span>Year ${year}</span>
+                </div>
+            `;
+
+
+            applicantList.appendChild(card);
+
         });
 
 
-        // ==========================================================
-        // AUTH STATE
-        // ==========================================================
+    } catch (error) {
 
-        onAuthStateChanged(auth, async (user) => {
+        console.error(error);
 
-            if (user && user.uid === ADMIN_UID) {
+        applicantList.innerHTML =
+            '<div class="error">Unable to load the current list.</div>';
+    }
 
-                loginSection.style.display = "none";
-                adminPanel.style.display = "block";
-
-                adminStatus.textContent =
-                    `Logged in as ${user.email}`;
-
-                await loadAdminInterests();
-
-            } else {
-
-                loginSection.style.display = "block";
-                adminPanel.style.display = "none";
-
-            }
-        });
+}
 
 
-        // ==========================================================
-        // ADMIN LIST
-        // ==========================================================
+/* =========================================================
+   ADMIN LOGIN
+========================================================= */
 
-        async function loadAdminInterests() {
+loginForm.addEventListener("submit", async (event) => {
 
-            try {
-
-                const q = query(
-                    collection(db, "interests"),
-                    orderBy("createdAt", "desc")
-                );
-
-                const snapshot = await getDocs(q);
-
-                adminStudentList.innerHTML = "";
-
-                if (snapshot.empty) {
-
-                    adminStudentList.innerHTML =
-                        "<p>No students have expressed interest yet.</p>";
-
-                    return;
-                }
+    event.preventDefault();
 
 
-                snapshot.forEach((documentSnapshot) => {
-
-                    const data = documentSnapshot.data();
-
-                    const row = document.createElement("div");
-                    row.className = "admin-row";
-
-                    row.innerHTML = `
-                        <div>
-                            <strong>${escapeHTML(data.name)}</strong>
-                            <br>
-                            <small>
-                                ${escapeHTML(data.email)}
-                                · Year ${escapeHTML(data.year)}
-                            </small>
-                        </div>
-
-                        <button
-                            class="delete-button"
-                            data-id="${documentSnapshot.id}">
-                            Remove
-                        </button>
-                    `;
-
-                    adminStudentList.appendChild(row);
-                });
+    const email =
+        document.getElementById("adminEmail")
+        .value.trim();
 
 
-                document
-                    .querySelectorAll(".delete-button")
-                    .forEach(button => {
+    const password =
+        document.getElementById("adminPassword")
+        .value;
 
-                        button.addEventListener("click", async () => {
 
-                            const confirmed =
-                                confirm(
-                                    "Remove this student from the list?"
-                                );
+    try {
 
-                            if (!confirmed) return;
+        const credential =
+            await signInWithEmailAndPassword(
+                auth,
+                email,
+                password
+            );
 
-                            try {
+
+        if (credential.user.uid !== ADMIN_UID) {
+
+            await signOut(auth);
+
+            showMessage(
+                loginMessage,
+                "This account is not authorised to access the administrator panel.",
+                "error"
+            );
+
+            return;
+        }
+
+
+        showMessage(
+            loginMessage,
+            "Logged in.",
+            "success"
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        showMessage(
+            loginMessage,
+            "Invalid administrator login details.",
+            "error"
+        );
+    }
+
+});
+
+
+/* =========================================================
+   AUTH STATE
+========================================================= */
+
+onAuthStateChanged(auth, async (user) => {
+
+    if (!user) {
+
+        loginSection.style.display =
+            "block";
+
+        adminPanel.style.display =
+            "none";
+
+        return;
+    }
+
+
+    /*
+     * IMPORTANT:
+     * The UI check is NOT the real security.
+     *
+     * Firestore Security Rules also check this UID.
+     */
+
+    if (user.uid !== ADMIN_UID) {
+
+        await signOut(auth);
+
+        loginSection.style.display =
+            "block";
+
+        adminPanel.style.display =
+            "none";
+
+        return;
+    }
+
+
+    loginSection.style.display =
+        "none";
+
+    adminPanel.style.display =
+        "block";
+
+
+    loadAdminApplicants();
+
+});
+
+
+/* =========================================================
+   ADMIN APPLICANTS
+========================================================= */
+
+async function loadAdminApplicants() {
+
+    adminApplicantList.innerHTML =
+        '<div class="loading">Loading applicants...</div>';
+
+
+    try {
+
+        const q = query(
+            collection(db, "privateApplicants"),
+            orderBy("createdAt", "desc")
+        );
+
+
+        const snapshot =
+            await getDocs(q);
+
+
+        adminApplicantList.innerHTML = "";
+
+
+        if (snapshot.empty) {
+
+            adminApplicantList.innerHTML =
+                '<div class="empty">No applicants.</div>';
+
+            return;
+        }
+
+
+        snapshot.forEach((applicant) => {
+
+            const data =
+                applicant.data();
+
+
+            const card =
+                document.createElement("div");
+
+            card.className =
+                "admin-applicant";
+
+
+            const verificationStatus =
+                data.verified
+                    ? "✓ Verified"
+                    : "⚠ Verification requested";
+
+
+            card.innerHTML = `
+
+                <div class="admin-info">
+
+                    <strong>
+                        ${escapeHTML(data.name)}
+                    </strong>
+
+                    <span>
+                        Year ${escapeHTML(String(data.year))}
+                    </span>
+
+                    <span>
+                        ${escapeHTML(data.email || "No email")}
+                    </span>
+
+                    <small>
+                        ${verificationStatus}
+                    </small>
+
+                    ${
+                        data.manuallyAdded
+                        ? "<small>Added manually by administrator</small>"
+                        : ""
+                    }
+
+                </div>
+
+                <button
+                    class="danger-button"
+                    type="button">
+                    Delete
+                </button>
+
+            `;
+
+
+            const deleteButton =
+                card.querySelector(".danger-button");
+
+
+            deleteButton.addEventListener(
+                "click",
+                async () => {
+
+                    const confirmed =
+                        confirm(
+                            `Delete ${data.name} from the applicant list?`
+                        );
+
+
+                    if (!confirmed) return;
+
+
+                    try {
+
+                        /*
+                         * Delete private record.
+                         */
+
+                        await deleteDoc(
+                            doc(
+                                db,
+                                "privateApplicants",
+                                applicant.id
+                            )
+                        );
+
+
+                        /*
+                         * Find matching public record by name/year.
+                         *
+                         * In a production app, using a shared
+                         * applicant ID would be even cleaner.
+                         */
+
+                        const publicSnapshot =
+                            await getDocs(
+                                collection(
+                                    db,
+                                    "publicApplicants"
+                                )
+                            );
+
+
+                        for (
+                            const publicApplicant
+                            of publicSnapshot.docs
+                        ) {
+
+                            const publicData =
+                                publicApplicant.data();
+
+
+                            if (
+                                publicData.name === data.name &&
+                                Number(publicData.year) === Number(data.year)
+                            ) {
 
                                 await deleteDoc(
                                     doc(
                                         db,
-                                        "interests",
-                                        button.dataset.id
+                                        "publicApplicants",
+                                        publicApplicant.id
                                     )
                                 );
 
-                                await loadAdminInterests();
-                                await loadPublicInterests();
-
-                            } catch (error) {
-
-                                console.error(error);
-
-                                alert(
-                                    "Unable to remove this student."
-                                );
+                                break;
                             }
-                        });
-                    });
-
-            } catch (error) {
-
-                console.error(error);
-
-                adminStudentList.innerHTML =
-                    "<p>Unable to load admin data.</p>";
-            }
-        }
+                        }
 
 
-        // ==========================================================
-        // LOGOUT
-        // ==========================================================
+                        showMessage(
+                            adminMessage,
+                            "Applicant deleted.",
+                            "success"
+                        );
 
-        logoutButton.addEventListener("click", async () => {
 
-            await signOut(auth);
+                        loadAdminApplicants();
+                        loadPublicApplicants();
 
-            adminEmail.value = "";
-            adminPassword.value = "";
 
-            adminStatus.textContent = "";
+                    } catch (error) {
+
+                        console.error(error);
+
+                        showMessage(
+                            adminMessage,
+                            "Unable to delete applicant.",
+                            "error"
+                        );
+                    }
+
+                }
+            );
+
+
+            adminApplicantList.appendChild(card);
+
         });
 
 
-        // ==========================================================
-        // STATUS MESSAGE
-        // ==========================================================
+    } catch (error) {
 
-        function showStatus(message, type) {
+        console.error(error);
 
-            statusMessage.textContent = message;
-            statusMessage.className = `status ${type}`;
-        }
+        adminApplicantList.innerHTML =
+            '<div class="error">Unable to load applicants.</div>';
+    }
 
-
-        // ==========================================================
-        // BASIC HTML ESCAPING
-        // Prevents names containing HTML from becoming code.
-        // ==========================================================
-
-        function escapeHTML(value) {
-
-            return String(value)
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#039;");
-        }
+}
 
 
-        // ==========================================================
-        // INITIAL LOAD
-        // ==========================================================
+/* =========================================================
+   MANUAL ADMIN ADD
+========================================================= */
 
-        loadPublicInterests();
+manualAddForm.addEventListener("submit", async (event) => {
 
-    </script>
+    event.preventDefault();
 
 
-    <!-- =========================
-         CSS
-         ========================= -->
+    if (!auth.currentUser ||
+        auth.currentUser.uid !== ADMIN_UID) {
 
-    <style>
+        showMessage(
+            adminMessage,
+            "You are not authorised to perform this action.",
+            "error"
+        );
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        return;
+    }
 
-        body {
-            font-family:
-                Inter,
-                system-ui,
-                -apple-system,
-                BlinkMacSystemFont,
-                "Segoe UI",
-                sans-serif;
 
-            background: #f5f7fb;
-            color: #172033;
-            line-height: 1.6;
-        }
+    const name =
+        document.getElementById("manualName")
+        .value.trim();
 
-        .container {
-            width: min(1100px, 92%);
-            margin: auto;
-        }
 
-        header {
-            padding: 70px 0 50px;
-            background:
-                linear-gradient(
-                    135deg,
-                    #111827,
-                    #243b53
-                );
+    const email =
+        document.getElementById("manualEmail")
+        .value.trim()
+        .toLowerCase();
 
-            color: white;
-        }
 
-        .badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 999px;
-            background: rgba(255,255,255,.12);
-            margin-bottom: 18px;
-            font-size: 14px;
-        }
+    const year =
+        document.getElementById("manualYear")
+        .value;
 
-        header h1 {
-            font-size: clamp(2.3rem, 6vw, 4.5rem);
-            line-height: 1.05;
-            max-width: 850px;
-            margin-bottom: 22px;
-        }
 
-        header p {
-            max-width: 700px;
-            font-size: 1.1rem;
-            opacity: .9;
-        }
+    if (!name || !email || !year) {
 
-        .warning {
-            margin-top: 25px;
-            padding: 16px 20px;
-            border-left: 4px solid #f59e0b;
-            background: rgba(245,158,11,.12);
-            border-radius: 8px;
-        }
+        showMessage(
+            adminMessage,
+            "Please fill in all fields.",
+            "error"
+        );
 
-        main {
-            padding: 50px 0;
-        }
+        return;
+    }
 
-        section {
-            background: white;
-            border-radius: 18px;
-            padding: 35px;
-            margin-bottom: 30px;
-            box-shadow:
-                0 8px 30px rgba(0,0,0,.06);
-        }
 
-        h2 {
-            font-size: 1.8rem;
-            margin-bottom: 15px;
-        }
+    try {
 
-        h3 {
-            margin-bottom: 10px;
-        }
+        /*
+         * Public record.
+         */
 
-        .intro {
-            font-size: 1.05rem;
-            color: #4b5563;
-        }
-
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 7px;
-        }
-
-        input,
-        select {
-            width: 100%;
-            padding: 13px 15px;
-            border: 1px solid #d5dbe5;
-            border-radius: 10px;
-            font-size: 1rem;
-            background: white;
-        }
-
-        input:focus,
-        select:focus {
-            outline: 2px solid #64748b;
-            outline-offset: 1px;
-        }
-
-        .conditions {
-            border: 1px solid #d5dbe5;
-            border-radius: 12px;
-            padding: 20px;
-            height: 230px;
-            overflow-y: auto;
-            background: #fafbfc;
-            margin: 20px 0 10px;
-        }
-
-        .conditions h3 {
-            margin-top: 15px;
-        }
-
-        .conditions h3:first-child {
-            margin-top: 0;
-        }
-
-        .conditions p,
-        .conditions li {
-            color: #4b5563;
-            margin-bottom: 10px;
-        }
-
-        .conditions ul {
-            padding-left: 20px;
-        }
-
-        #scrollMessage {
-            font-size: .9rem;
-            color: #6b7280;
-            margin-bottom: 15px;
-        }
-
-        .checkbox {
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-            margin: 15px 0;
-        }
-
-        .checkbox input {
-            width: auto;
-            margin-top: 6px;
-        }
-
-        button {
-            border: none;
-            border-radius: 10px;
-            padding: 13px 20px;
-            font-size: 1rem;
-            font-weight: 700;
-            cursor: pointer;
-            background: #172033;
-            color: white;
-            transition: .2s;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-1px);
-            opacity: .9;
-        }
-
-        button:disabled {
-            opacity: .45;
-            cursor: not-allowed;
-        }
-
-        .status {
-            margin-top: 18px;
-            padding: 14px;
-            border-radius: 10px;
-            display: none;
-        }
-
-        .status.success,
-        .status.error {
-            display: block;
-        }
-
-        .status.success {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .status.error {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .interest-number {
-            font-size: 4rem;
-            font-weight: 800;
-            line-height: 1;
-            margin: 20px 0 5px;
-        }
-
-        .student-list {
-            margin-top: 20px;
-            display: grid;
-            grid-template-columns:
-                repeat(auto-fit, minmax(220px, 1fr));
-
-            gap: 12px;
-        }
-
-        .student-card {
-            padding: 15px;
-            background: #f5f7fb;
-            border-radius: 10px;
-        }
-
-        .student-card strong {
-            display: block;
-        }
-
-        .student-card span {
-            font-size: .9rem;
-            color: #6b7280;
-        }
-
-        .empty {
-            color: #6b7280;
-            padding: 20px;
-        }
-
-        .admin-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 15px;
-            padding: 15px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .delete-button {
-            background: #dc2626;
-            padding: 8px 13px;
-            font-size: .9rem;
-        }
-
-        #adminPanel {
-            display: none;
-        }
-
-        footer {
-            padding: 40px 0;
-            text-align: center;
-            color: #6b7280;
-            font-size: .9rem;
-        }
-
-        @media (max-width: 600px) {
-
-            section {
-                padding: 24px;
+        await addDoc(
+            collection(db, "publicApplicants"),
+            {
+                name: name,
+                year: Number(year),
+                createdAt: serverTimestamp()
             }
+        );
 
-            header {
-                padding: 50px 0 40px;
+
+        /*
+         * Private record.
+         */
+
+        await addDoc(
+            collection(db, "privateApplicants"),
+            {
+                name: name,
+                email: email,
+                year: Number(year),
+
+                uid: null,
+
+                verified: true,
+
+                verificationRequested: false,
+
+                manuallyAdded: true,
+
+                createdAt: serverTimestamp()
             }
+        );
 
-            .admin-row {
-                align-items: flex-start;
-                flex-direction: column;
-            }
-        }
 
-    </style>
+        manualAddForm.reset();
+
+
+        showMessage(
+            adminMessage,
+            "Applicant added manually.",
+            "success"
+        );
+
+
+        loadAdminApplicants();
+        loadPublicApplicants();
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        showMessage(
+            adminMessage,
+            "Unable to add applicant.",
+            "error"
+        );
+    }
+
+});
+
+
+/* =========================================================
+   LOGOUT
+========================================================= */
+
+logoutButton.addEventListener(
+    "click",
+    async () => {
+
+        await signOut(auth);
+
+        loginForm.reset();
+
+        loginMessage.textContent = "";
+
+    }
+);
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+
+function showMessage(element, text, type) {
+
+    element.textContent = text;
+
+    element.className =
+        `message ${type}`;
+}
+
+
+/* =========================================================
+   INITIAL LOAD
+========================================================= */
+
+loadPublicApplicants();
+
+</script>
+
+
+<style>
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    background: #f5f7fb;
+    color: #172033;
+    line-height: 1.6;
+}
+
+.container {
+    width: min(1100px, 92%);
+    margin: auto;
+}
+
+header {
+    background:
+        linear-gradient(
+            135deg,
+            #101828,
+            #243b64
+        );
+
+    color: white;
+    padding: 80px 0;
+}
+
+header h1 {
+    font-size:
+        clamp(2.3rem, 6vw, 4.5rem);
+
+    line-height: 1.05;
+    margin-bottom: 20px;
+}
+
+header p {
+    max-width: 700px;
+    font-size: 1.15rem;
+    opacity: .9;
+}
+
+.badge {
+    display: inline-block;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.25);
+    padding: 7px 14px;
+    border-radius: 999px;
+    margin-bottom: 20px;
+    font-size: .9rem;
+}
+
+nav {
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+nav .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+}
+
+nav strong {
+    font-size: 1.05rem;
+}
+
+nav a {
+    color: #243b64;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+section {
+    padding: 70px 0;
+}
+
+section h2 {
+    font-size: 2rem;
+    margin-bottom: 18px;
+}
+
+.section-intro {
+    max-width: 760px;
+    color: #667085;
+    margin-bottom: 35px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(260px, 1fr));
+    gap: 22px;
+}
+
+.card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.04);
+}
+
+.card h3 {
+    margin-bottom: 10px;
+}
+
+.signup-section {
+    background: white;
+}
+
+form {
+    display: grid;
+    gap: 16px;
+}
+
+label {
+    font-weight: 600;
+}
+
+input,
+select {
+    width: 100%;
+    padding: 13px 15px;
+    border: 1px solid #d0d5dd;
+    border-radius: 10px;
+    font-size: 1rem;
+    background: white;
+}
+
+input:focus,
+select:focus {
+    outline: 2px solid #8095ff;
+    border-color: #667eea;
+}
+
+button {
+    border: none;
+    border-radius: 10px;
+    padding: 13px 18px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: #243b64;
+    color: white;
+}
+
+button:hover {
+    opacity: .9;
+}
+
+button:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.conditions {
+    background: #f8fafc;
+    border: 1px solid #d0d5dd;
+    border-radius: 12px;
+    padding: 20px;
+    height: 260px;
+    overflow-y: auto;
+    margin-top: 8px;
+}
+
+.conditions h3 {
+    margin: 16px 0 5px;
+}
+
+.conditions h3:first-child {
+    margin-top: 0;
+}
+
+.accept {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-top: 15px;
+}
+
+.accept input {
+    width: auto;
+    margin-top: 5px;
+}
+
+.applicant-list {
+    display: grid;
+    gap: 10px;
+}
+
+.applicant {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 15px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.applicant span {
+    display: block;
+    color: #667085;
+    font-size: .9rem;
+}
+
+.count {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 15px;
+}
+
+.step {
+    position: relative;
+    padding-left: 55px;
+}
+
+.number {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #243b64;
+    color: white;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+}
+
+.message {
+    padding: 12px 15px;
+    border-radius: 10px;
+    display: none;
+}
+
+.message.success {
+    display: block;
+    background: #ecfdf3;
+    color: #027a48;
+}
+
+.message.error {
+    display: block;
+    background: #fef3f2;
+    color: #b42318;
+}
+
+.message.normal {
+    display: block;
+    background: #f2f4f7;
+    color: #344054;
+}
+
+#adminPanel {
+    display: none;
+    background: #111827;
+    color: white;
+}
+
+.admin-box {
+    background: #1f2937;
+    border: 1px solid #374151;
+    padding: 25px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+}
+
+.admin-applicant {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    background: #1f2937;
+    border: 1px solid #374151;
+    padding: 18px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+}
+
+.admin-info {
+    display: grid;
+    gap: 3px;
+}
+
+.admin-info span,
+.admin-info small {
+    color: #cbd5e1;
+}
+
+.danger-button {
+    background: #b42318;
+}
+
+#adminPanel input,
+#adminPanel select {
+    background: #111827;
+    color: white;
+    border-color: #4b5563;
+}
+
+.contact {
+    margin-top: 20px;
+    display: inline-block;
+    color: #243b64;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+footer {
+    padding: 35px 0;
+    background: #101828;
+    color: #98a2b3;
+    text-align: center;
+}
+
+.loading,
+.empty,
+.error {
+    padding: 15px;
+}
+
+@media(max-width:650px) {
+
+    header {
+        padding: 55px 0;
+    }
+
+    section {
+        padding: 50px 0;
+    }
+
+    .admin-applicant {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+}
+
+</style>
 
 </head>
 
 
 <body>
 
+<nav>
+<div class="container">
 
-    <!-- =========================
-         HERO
-         ========================= -->
+<strong>
+NBHS Accelerated Engineering
+</strong>
 
-    <header>
+<a href="#signup">
+Express Interest →
+</a>
 
-        <div class="container">
+</div>
+</nav>
 
-            <div class="badge">
-                NBHS · Expression of Interest
-            </div>
 
-            <h1>
-                Interested in Accelerated Engineering Studies?
-            </h1>
+<header>
 
-            <p>
-                We're collecting expressions of interest from students
-                who would like the possibility of taking Engineering Studies
-                earlier than normally offered.
-            </p>
+<div class="container">
 
-            <div class="warning">
-                <strong>Important:</strong>
-                This is an expression of interest only.
-                It does <strong>not</strong> guarantee that Accelerated
-                Engineering Studies will be offered. Any course would
-                still require school approval and depend on factors such
-                as staffing, timetabling and other requirements.
-            </div>
+<div class="badge">
+Normanhurst Boys High School
+</div>
 
-        </div>
+<h1>
+Accelerated<br>
+Engineering Studies
+</h1>
 
-    </header>
+<p>
+Interested in taking Engineering Studies earlier?
+Express your interest and help demonstrate student demand
+for the course.
+</p>
 
+</div>
 
-    <main>
+</header>
 
-        <div class="container">
 
+<section>
 
-            <!-- =========================
-                 WHY
-                 ========================= -->
+<div class="container">
 
-            <section>
+<h2>
+What is happening?
+</h2>
 
-                <h2>Why are we collecting interest?</h2>
+<p class="section-intro">
 
-                <p class="intro">
+Preliminary discussions about the possibility of offering
+accelerated Engineering Studies have taken place with the
+school. However, before anything can move forward, we need
+to know whether there is enough genuine student interest.
 
-                    The purpose of this form is to demonstrate how many
-                    students would be interested in an accelerated
-                    Engineering Studies pathway.
+<br><br>
 
-                    The more accurate the expression of interest,
-                    the better the school can understand potential demand.
+Expressing interest does <strong>not</strong> mean that the
+course will definitely be offered. The final decision rests
+with the school and depends on factors such as demand,
+staffing, timetabling and school approval.
 
-                </p>
+</p>
 
-            </section>
 
+<div class="grid">
 
-            <!-- =========================
-                 SIGNUP
-                 ========================= -->
+<div class="card">
+<h3>⚙️ What is Engineering Studies?</h3>
 
-            <section>
+<p>
+Engineering Studies is a Stage 6 subject that explores
+engineering concepts, design, materials, mechanics,
+electronics and engineering applications.
+</p>
+</div>
 
-                <h2>Express your interest</h2>
 
-                <p class="intro">
-                    Enter your details below. You will need to verify
-                    your email address.
-                </p>
+<div class="card">
+<h3>🧠 Why take it?</h3>
 
-                <form id="interestForm">
+<p>
+Engineering Studies can provide an early foundation in
+engineering and physics-related concepts while developing
+practical design and problem-solving skills.
+</p>
+</div>
 
-                    <div class="form-group">
 
-                        <label for="name">
-                            Full name
-                        </label>
+<div class="card">
+<h3>🚀 Why accelerate?</h3>
 
-                        <input
-                            id="name"
-                            type="text"
-                            placeholder="Your name"
-                            required
-                        >
+<p>
+Completing the course earlier could provide additional
+flexibility in Years 11 and 12, such as allowing another
+subject to be taken or reducing the number of subjects
+being completed later.
+</p>
+</div>
 
-                    </div>
 
+<div class="card">
+<h3>📚 Physics foundation</h3>
 
-                    <div class="form-group">
+<p>
+Engineering Studies includes concepts that overlap with
+areas of physics, potentially providing useful groundwork
+for students interested in studying Physics.
+</p>
+</div>
 
-                        <label for="email">
-                            School email
-                        </label>
+</div>
 
-                        <input
-                            id="email"
-                            type="email"
-                            placeholder="your.email@education.nsw.gov.au"
-                            required
-                        >
 
-                    </div>
+<a
+class="contact"
+href="https://www.nsw.gov.au/education-and-training/nesa/curriculum/tas/engineering-studies-stage-6-2011"
+target="_blank"
+rel="noopener">
+View the NESA Engineering Studies syllabus →
+</a>
 
+</div>
 
-                    <div class="form-group">
+</section>
 
-                        <label for="year">
-                            Current year
-                        </label>
 
-                        <select id="year" required>
+<section>
 
-                            <option value="">
-                                Select your year
-                            </option>
+<div class="container">
 
-                            <option value="8">
-                                Year 8
-                            </option>
+<h2>How the process works</h2>
 
-                            <option value="9">
-                                Year 9
-                            </option>
+<p class="section-intro">
+This is an expression of interest, not an enrolment form.
+</p>
 
-                            <option value="10">
-                                Year 10
-                            </option>
 
-                            <option value="11">
-                                Year 11
-                            </option>
+<div class="grid">
 
-                            <option value="12">
-                                Year 12
-                            </option>
+<div class="card step">
+<div class="number">1</div>
+<h3>Express interest</h3>
+<p>
+Submit your name, school email and year.
+</p>
+</div>
 
-                        </select>
 
-                    </div>
+<div class="card step">
+<div class="number">2</div>
+<h3>Verify</h3>
+<p>
+Verify your email to confirm that your expression of
+interest is genuine.
+</p>
+</div>
 
 
-                    <!-- =========================
-                         CONDITIONS
-                         ========================= -->
+<div class="card step">
+<div class="number">3</div>
+<h3>Build the case</h3>
+<p>
+The number of genuine students interested helps
+demonstrate whether there is demand.
+</p>
+</div>
 
-                    <h3>
-                        Conditions
-                    </h3>
 
-                    <div
-                        class="conditions"
-                        id="conditionsBox"
-                    >
+<div class="card step">
+<div class="number">4</div>
+<h3>School decision</h3>
+<p>
+The school makes the final decision about whether the
+course can be offered.
+</p>
+</div>
 
-                        <h3>
-                            1. Expression of interest
-                        </h3>
+</div>
 
-                        <p>
-                            Submitting this form indicates that you
-                            are interested in the possibility of taking
-                            Accelerated Engineering Studies.
-                        </p>
+</div>
 
+</section>
 
-                        <h3>
-                            2. No guarantee
-                        </h3>
 
-                        <p>
-                            Submitting an expression of interest does
-                            not guarantee that the course will be
-                            introduced or that you will be able to
-                            enrol in it.
-                        </p>
+<section>
 
+<div class="container">
 
-                        <h3>
-                            3. School approval
-                        </h3>
+<h2>
+Who should consider expressing interest?
+</h2>
 
-                        <p>
-                            Any accelerated Engineering Studies course
-                            would be subject to the relevant school
-                            approval, staffing, timetable and course
-                            requirements.
-                        </p>
+<p class="section-intro">
+Accelerated Engineering Studies is a significant commitment.
+Students should carefully consider whether they meet the
+following criteria.
+</p>
 
 
-                        <h3>
-                            4. Accurate information
-                        </h3>
+<div class="card">
 
-                        <p>
-                            You agree that the information you provide
-                            is accurate and that you are submitting the
-                            form yourself.
-                        </p>
+<ol>
 
+<li>
+You are not currently taking another accelerated course,
+or are willing to give one up if required.
+</li>
 
-                        <h3>
-                            5. Use of information
-                        </h3>
+<li>
+You demonstrate academic excellence.
+</li>
 
-                        <p>
-                            The information collected through this form
-                            is intended to determine student interest
-                            and assist with demonstrating potential
-                            demand for the course.
-                        </p>
+<li>
+You have the time and commitment required.
+</li>
 
+<li>
+You should only express genuine interest if you would be
+prepared to accept an invitation to participate, subject
+to school requirements and final approval.
+</li>
 
-                        <h3>
-                            6. Visibility
-                        </h3>
+<li>
+The course is subject to school approval.
+</li>
 
-                        <p>
-                            Your name and year may appear on a list
-                            showing students who have expressed interest.
-                            Your email address will not be publicly
-                            displayed.
-                        </p>
+<li>
+All information provided must be accurate.
+</li>
 
+<li>
+Expressing interest does not guarantee that the course
+will be offered.
+</li>
 
-                        <h3>
-                            7. Withdrawal
-                        </h3>
+<li>
+Student interest information may be visible to other
+students. Personal contact details will not be publicly
+displayed.
+</li>
 
-                        <p>
-                            If you change your mind, contact the person
-                            responsible for managing the expression of
-                            interest list.
-                        </p>
+<li>
+The final decision regarding the course is made by the
+school.
+</li>
 
+<li>
+Students should have strong STEM and/or engineering
+foundations.
+</li>
 
-                        <h3>
-                            8. Final decision
-                        </h3>
+</ol>
 
-                        <p>
-                            The final decision regarding whether
-                            accelerated Engineering Studies can occur
-                            rests with the school and relevant
-                            decision-makers.
-                        </p>
+</div>
 
+</div>
 
-                        <h3>
-                            End of conditions
-                        </h3>
+</section>
 
-                        <p>
-                            You have reached the end of the conditions.
-                        </p>
 
-                    </div>
+<section id="signup" class="signup-section">
 
+<div class="container">
 
-                    <p id="scrollMessage">
-                        Please scroll to the bottom of the conditions
-                        before accepting them.
-                    </p>
+<h2>
+Want to express interest?
+</h2>
 
+<p class="section-intro">
 
-                    <div class="checkbox">
+Fill out the form below. You will receive an email asking
+you to verify your address.
 
-                        <input
-                            id="acceptConditions"
-                            type="checkbox"
-                        >
+</p>
 
-                        <label for="acceptConditions">
-                            I have read and understood the conditions
-                            above and I would like to express my interest.
-                        </label>
 
-                    </div>
+<div class="card">
 
+<form id="signupForm">
 
-                    <button
-                        id="submitButton"
-                        type="submit"
-                    >
-                        Express My Interest
-                    </button>
 
+<div>
 
-                    <div
-                        id="statusMessage"
-                        class="status"
-                    ></div>
+<label for="studentName">
+Name
+</label>
 
-                </form>
+<input
+id="studentName"
+type="text"
+placeholder="Your full name"
+required>
 
-            </section>
+</div>
 
 
-            <!-- =========================
-                 INTEREST COUNTER
-                 ========================= -->
+<div>
 
-            <section>
+<label for="studentEmail">
+School email
+</label>
 
-                <h2>
-                    Current interest
-                </h2>
+<input
+id="studentEmail"
+type="email"
+placeholder="your.name@education.nsw.gov.au"
+required>
 
-                <p class="intro">
-                    Students who have submitted an expression of interest.
-                </p>
+</div>
 
-                <div
-                    id="interestCount"
-                    class="interest-number"
-                >
-                    0
-                </div>
 
-                <p>
-                    students interested
-                </p>
+<div>
 
+<label for="studentYear">
+Year
+</label>
 
-                <div
-                    id="studentList"
-                    class="student-list"
-                >
-                    Loading...
-                </div>
+<select id="studentYear" required>
 
-            </section>
+<option value="">
+Select your year
+</option>
 
+<option value="8">Year 8</option>
+<option value="9">Year 9</option>
+<option value="10">Year 10</option>
+<option value="11">Year 11</option>
+<option value="12">Year 12</option>
 
-            <!-- =========================
-                 ADMIN LOGIN
-                 ========================= -->
+</select>
 
-            <section id="adminSection">
+</div>
 
-                <h2>
-                    Administrator
-                </h2>
 
-                <p class="intro">
-                    This area is restricted to authorised administrators.
-                </p>
+<h3>Conditions</h3>
 
-                <form id="adminLoginForm">
 
-                    <div class="form-group">
+<div class="conditions" id="conditionsBox">
 
-                        <label>
-                            Email
-                        </label>
 
-                        <input
-                            id="adminEmail"
-                            type="email"
-                            required
-                        >
+<h3>1. Accelerated courses</h3>
 
-                    </div>
+<p>
+Students should not already be committed to another
+accelerated course unless they are willing to give it up
+if required.
+</p>
 
 
-                    <div class="form-group">
+<h3>2. Academic excellence</h3>
 
-                        <label>
-                            Password
-                        </label>
+<p>
+Students should have demonstrated strong academic
+performance.
+</p>
 
-                        <input
-                            id="adminPassword"
-                            type="password"
-                            required
-                        >
 
-                    </div>
+<h3>3. Time and commitment</h3>
 
+<p>
+Engineering Studies requires genuine time, effort and
+commitment.
+</p>
 
-                    <button type="submit">
-                        Admin Login
-                    </button>
 
-                    <p
-                        id="adminStatus"
-                        style="margin-top:15px;"
-                    ></p>
+<h3>4. Commitment if invited</h3>
 
-                </form>
+<p>
+Students expressing genuine interest should only do so if
+they would be prepared to accept an invitation to
+participate, subject to school requirements and final
+approval.
+</p>
 
-            </section>
 
+<h3>5. School approval</h3>
 
-            <!-- =========================
-                 ADMIN PANEL
-                 ========================= -->
+<p>
+The course is subject to approval by Normanhurst Boys
+High School.
+</p>
 
-            <section id="adminPanel">
 
-                <h2>
-                    Admin Panel
-                </h2>
+<h3>6. Accurate information</h3>
 
-                <p id="adminStatus"></p>
+<p>
+All information submitted must be accurate and truthful.
+</p>
 
-                <br>
 
-                <h3>
-                    Students who expressed interest
-                </h3>
+<h3>7. No guarantee</h3>
 
-                <div id="adminStudentList">
-                    Loading...
-                </div>
+<p>
+Expressing interest does not guarantee that the course
+will be offered.
+</p>
 
-                <br>
 
-                <button id="logoutButton">
-                    Log Out
-                </button>
+<h3>8. Visibility</h3>
 
-            </section>
+<p>
+Student names and years may be displayed to demonstrate
+interest. Email addresses will only be accessible to
+authorised administrators.
+</p>
 
 
-        </div>
+<h3>9. Final decision</h3>
 
-    </main>
+<p>
+The school retains the final decision regarding whether
+the course will proceed.
+</p>
 
 
-    <footer>
+<h3>10. STEM foundations</h3>
 
-        <div class="container">
+<p>
+Students should have strong STEM and/or engineering
+foundations appropriate to the accelerated nature of the
+course.
+</p>
 
-            NBHS Accelerated Engineering Studies ·
-            Expression of Interest
 
-            <br>
+</div>
 
-            This website is not an official confirmation
-            that the course will be offered.
 
-        </div>
+<label class="accept">
 
-    </footer>
+<input
+id="acceptConditions"
+type="checkbox"
+disabled>
 
+<span>
+I have read the conditions above and understand that
+expressing interest does not guarantee that the course
+will be offered.
+</span>
+
+</label>
+
+
+<button
+id="signupButton"
+type="submit"
+disabled>
+Express Interest
+</button>
+
+
+<div id="signupMessage" class="message"></div>
+
+
+</form>
+
+</div>
+
+</div>
+
+</section>
+
+
+<section>
+
+<div class="container">
+
+<h2>
+Current interest
+</h2>
+
+<p class="section-intro">
+Students who have expressed interest are shown below.
+This list is intended to demonstrate student demand.
+</p>
+
+
+<div class="count" id="applicantCount">
+0
+</div>
+
+
+<div
+class="applicant-list"
+id="applicantList">
+</div>
+
+</div>
+
+</section>
+
+
+<section>
+
+<div class="container">
+
+<div class="card">
+
+<h2>
+Want to ask a question?
+</h2>
+
+<p>
+If you have a question about the petition or expression
+of interest, contact Darrel.
+</p>
+
+
+<a
+class="contact"
+href="mailto:darrel.lee@education.nsw.gov.au?subject=Accelerated%20Engineering%20Studies%20Question">
+Ask a question →
+</a>
+
+</div>
+
+</div>
+
+</section>
+
+
+<section id="loginSection">
+
+<div class="container">
+
+<div class="card">
+
+<h2>
+Administrator
+</h2>
+
+<p class="section-intro">
+Authorised administrators can manage the expression-of-
+interest list.
+</p>
+
+
+<form id="loginForm">
+
+<input
+id="adminEmail"
+type="email"
+placeholder="Administrator email"
+required>
+
+
+<input
+id="adminPassword"
+type="password"
+placeholder="Password"
+required>
+
+
+<button type="submit">
+Log in
+</button>
+
+
+<div id="loginMessage" class="message"></div>
+
+</form>
+
+</div>
+
+</div>
+
+</section>
+
+
+<section id="adminPanel">
+
+<div class="container">
+
+<h2>
+Administrator Panel
+</h2>
+
+<p class="section-intro">
+This information is restricted to the authorised
+administrator.
+</p>
+
+
+<div class="admin-box">
+
+<h3>
+Add applicant manually
+</h3>
+
+<p>
+This can be used to add a student without requiring email
+verification.
+</p>
+
+
+<form id="manualAddForm">
+
+<input
+id="manualName"
+type="text"
+placeholder="Student name"
+required>
+
+
+<input
+id="manualEmail"
+type="email"
+placeholder="Student email"
+required>
+
+
+<select id="manualYear" required>
+
+<option value="">
+Select year
+</option>
+
+<option value="8">Year 8</option>
+<option value="9">Year 9</option>
+<option value="10">Year 10</option>
+<option value="11">Year 11</option>
+<option value="12">Year 12</option>
+
+</select>
+
+
+<button type="submit">
+Add Applicant
+</button>
+
+
+<div id="adminMessage" class="message"></div>
+
+</form>
+
+</div>
+
+
+<div class="admin-box">
+
+<h3>
+Applicants
+</h3>
+
+<div id="adminApplicantList"></div>
+
+</div>
+
+
+<button id="logoutButton">
+Log out
+</button>
+
+</div>
+
+</section>
+
+
+<footer>
+
+<div class="container">
+
+NBHS Accelerated Engineering Studies
+
+<br>
+
+Student expression of interest portal
+
+</div>
+
+</footer>
 
 </body>
 </html>
