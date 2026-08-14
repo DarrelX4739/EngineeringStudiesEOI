@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
 <meta charset="UTF-8">
@@ -9,12 +10,13 @@
     content="width=device-width, initial-scale=1.0"
 >
 
-<title>Verify Email — Accelerated Engineering Studies</title>
-
 <link
     rel="icon"
+    type="image/jpeg"
     href="https://static.vecteezy.com/system/resources/previews/043/623/704/non_2x/engineering-line-circle-icon-design-vector.jpg"
 >
+
+<title>Verify Email — Accelerated Engineering Studies</title>
 
 <style>
 
@@ -23,17 +25,11 @@
 }
 
 body {
-
     margin: 0;
-
     min-height: 100vh;
-
     display: grid;
-
     place-items: center;
-
     padding: 20px;
-
     font-family:
         Inter,
         system-ui,
@@ -41,98 +37,50 @@ body {
         BlinkMacSystemFont,
         "Segoe UI",
         sans-serif;
-
     background: #f5f7fb;
-
     color: #172033;
-
 }
 
 .card {
-
-    width: min(600px, 100%);
-
+    width: min(520px, 100%);
     background: white;
-
     border: 1px solid #e5e7eb;
-
     border-radius: 20px;
-
-    padding: 40px;
-
+    padding: 35px;
+    box-shadow: 0 15px 40px rgba(0,0,0,.08);
     text-align: center;
+}
 
-    box-shadow:
-        0 15px 40px rgba(0,0,0,.08);
-
+.icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
 }
 
 h1 {
-
-    margin-bottom: 15px;
-
+    margin-bottom: 12px;
 }
 
 p {
-
     color: #667085;
-
-    line-height: 1.6;
-
-}
-
-.status {
-
-    margin-top: 25px;
-
-    padding: 15px;
-
-    border-radius: 10px;
-
 }
 
 .success {
-
-    background: #ecfdf3;
-
     color: #027a48;
-
 }
 
 .error {
-
-    background: #fef3f2;
-
     color: #b42318;
-
-}
-
-.loading {
-
-    background: #eff6ff;
-
-    color: #1d4ed8;
-
 }
 
 a {
-
     display: inline-block;
-
-    margin-top: 25px;
-
+    margin-top: 20px;
     padding: 13px 20px;
-
     border-radius: 10px;
-
     background: #243b64;
-
     color: white;
-
     text-decoration: none;
-
     font-weight: 700;
-
 }
 
 </style>
@@ -143,27 +91,27 @@ a {
 
 <div class="card">
 
-<h1>
-Email Verification
-</h1>
-
-<p>
-We're confirming your email address.
-</p>
-
 <div
-    id="status"
-    class="status loading"
+    class="icon"
+    id="icon"
 >
-Verifying your email...
+⏳
 </div>
 
+<h1 id="title">
+Verifying your email...
+</h1>
+
+<p id="message">
+Please wait while we confirm your email address.
+</p>
+
 <a
-    id="homeLink"
+    id="returnLink"
     href="index.html"
     style="display:none;"
 >
-Return to the website
+Return to the application
 </a>
 
 </div>
@@ -176,21 +124,9 @@ from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 
 import {
     getAuth,
-    applyActionCode,
-    onAuthStateChanged,
-    reload
+    applyActionCode
 }
 from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-
-import {
-    getFirestore,
-    collection,
-    query,
-    where,
-    getDocs,
-    updateDoc
-}
-from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 
 const firebaseConfig = {
@@ -222,29 +158,18 @@ const app =
 const auth =
     getAuth(app);
 
-const db =
-    getFirestore(app);
 
+const title =
+    document.getElementById("title");
 
-const status =
-    document.getElementById("status");
+const message =
+    document.getElementById("message");
 
-const homeLink =
-    document.getElementById("homeLink");
+const icon =
+    document.getElementById("icon");
 
-
-function showStatus(
-    message,
-    type
-) {
-
-    status.textContent =
-        message;
-
-    status.className =
-        "status " + type;
-
-}
+const returnLink =
+    document.getElementById("returnLink");
 
 
 async function verifyEmail() {
@@ -254,126 +179,63 @@ async function verifyEmail() {
             window.location.search
         );
 
+
     const mode =
         params.get("mode");
 
-    const actionCode =
+    const oobCode =
         params.get("oobCode");
 
 
     if (
         mode !== "verifyEmail" ||
-        !actionCode
+        !oobCode
     ) {
 
-        showStatus(
-            "This verification link is invalid or incomplete.",
-            "error"
-        );
+        icon.textContent = "❌";
 
-        homeLink.style.display =
+        title.textContent =
+            "Invalid verification link";
+
+        message.textContent =
+            "This verification link is missing or invalid. Please request a new verification email.";
+
+        message.className =
+            "error";
+
+        returnLink.style.display =
             "inline-block";
 
         return;
+
     }
 
 
     try {
 
         /*
-           Apply Firebase's official verification code.
+           This is the actual Firebase verification operation.
         */
 
         await applyActionCode(
             auth,
-            actionCode
+            oobCode
         );
 
 
-        /*
-           Check whether the applicant's Firebase account
-           is currently signed in.
-        */
+        icon.textContent =
+            "✅";
 
-        const user =
-            auth.currentUser;
+        title.textContent =
+            "Email verified!";
 
+        message.textContent =
+            "Your email address has been successfully verified. Your expression of interest has been confirmed.";
 
-        if (!user) {
+        message.className =
+            "success";
 
-            showStatus(
-                "Your email has been verified by Firebase, but this browser does not have your application session available. Please return to the website using the same browser you used to apply.",
-                "error"
-            );
-
-            homeLink.style.display =
-                "inline-block";
-
-            return;
-        }
-
-
-        await reload(user);
-
-
-        /*
-           Find this user's applicant document.
-        */
-
-        const q =
-            query(
-                collection(db, "applicants"),
-                where(
-                    "uid",
-                    "==",
-                    user.uid
-                )
-            );
-
-
-        const snapshot =
-            await getDocs(q);
-
-
-        if (snapshot.empty) {
-
-            showStatus(
-                "Your email was verified, but your application could not be found.",
-                "error"
-            );
-
-            homeLink.style.display =
-                "inline-block";
-
-            return;
-        }
-
-
-        /*
-           Update the applicant record.
-        */
-
-        for (
-            const applicant of snapshot.docs
-        ) {
-
-            await updateDoc(
-                applicant.ref,
-                {
-                    verified: true
-                }
-            );
-
-        }
-
-
-        showStatus(
-            "Email verified successfully! Your expression of interest is now confirmed.",
-            "success"
-        );
-
-
-        homeLink.style.display =
+        returnLink.style.display =
             "inline-block";
 
 
@@ -385,39 +247,32 @@ async function verifyEmail() {
         );
 
 
-        let message =
-            "We couldn't verify this email address.";
+        icon.textContent =
+            "❌";
 
+        title.textContent =
+            "Verification failed";
+
+        let text =
+            "This verification link is invalid or has expired. Please request a new verification email.";
 
         if (
             error.code ===
             "auth/invalid-action-code"
         ) {
 
-            message =
-                "This verification link is invalid, expired, or has already been used.";
+            text =
+                "This verification link is invalid or has already been used.";
 
         }
 
+        message.textContent =
+            text;
 
-        if (
-            error.code ===
-            "auth/expired-action-code"
-        ) {
+        message.className =
+            "error";
 
-            message =
-                "This verification link has expired. Please request a new verification email.";
-
-        }
-
-
-        showStatus(
-            message,
-            "error"
-        );
-
-
-        homeLink.style.display =
+        returnLink.style.display =
             "inline-block";
 
     }
