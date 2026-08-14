@@ -289,6 +289,10 @@ button:disabled {
     background: #b42318;
 }
 
+.verify-button {
+    background: #027a48;
+}
+
 #adminPanel input,
 #adminPanel select {
     background: #111827;
@@ -919,6 +923,7 @@ import {
     addDoc,
     getDocs,
     deleteDoc,
+    updateDoc,
     doc,
     query,
     orderBy,
@@ -1175,12 +1180,6 @@ signupForm.addEventListener("submit", async (event) => {
             userCredential.user;
 
 
-        /*
-           The verification email is sent immediately.
-           The link points through Firebase's email-action
-           handler and ultimately to verification.html.
-        */
-
         const actionCodeSettings = {
 
             url:
@@ -1198,10 +1197,6 @@ signupForm.addEventListener("submit", async (event) => {
         );
 
 
-        /*
-           Save applicant.
-        */
-
         await addDoc(
             collection(db, "applicants"),
             {
@@ -1213,12 +1208,6 @@ signupForm.addEventListener("submit", async (event) => {
                 email,
 
                 uid: user.uid,
-
-                /*
-                   This starts false.
-                   Firebase Authentication's emailVerified
-                   is the authoritative verification state.
-                */
 
                 verified: false,
 
@@ -1552,10 +1541,11 @@ async function loadAdminApplicants() {
 
     try {
 
-        const q = query(
-            collection(db, "applicants"),
-            orderBy("createdAt", "desc")
-        );
+        const q =
+            query(
+                collection(db, "applicants"),
+                orderBy("createdAt", "desc")
+            );
 
 
         const snapshot =
@@ -1584,6 +1574,7 @@ async function loadAdminApplicants() {
             const card =
                 document.createElement("div");
 
+
             card.className =
                 "admin-applicant";
 
@@ -1593,15 +1584,21 @@ async function loadAdminApplicants() {
                 <div class="admin-info">
 
                     <strong>
-                        ${escapeHTML(data.name || "Unknown")}
+                        ${escapeHTML(
+                            data.name || "Unknown"
+                        )}
                     </strong>
 
                     <span>
-                        Year ${escapeHTML(String(data.year || ""))}
+                        Year ${escapeHTML(
+                            String(data.year || "")
+                        )}
                     </span>
 
                     <span>
-                        ${escapeHTML(data.email || "No email")}
+                        ${escapeHTML(
+                            data.email || "No email"
+                        )}
                     </span>
 
                     <small>
@@ -1620,18 +1617,115 @@ async function loadAdminApplicants() {
 
                 </div>
 
-                <button
-                    class="danger-button"
-                    type="button"
-                >
-                    Delete
-                </button>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+
+                    ${
+                        !data.verified
+                            ? `
+                                <button
+                                    class="verify-button"
+                                    type="button"
+                                >
+                                    ✓ Verify
+                                </button>
+                              `
+                            : ""
+                    }
+
+                    <button
+                        class="danger-button"
+                        type="button"
+                    >
+                        Delete
+                    </button>
+
+                </div>
 
             `;
 
 
             const deleteButton =
-                card.querySelector(".danger-button");
+                card.querySelector(
+                    ".danger-button"
+                );
+
+
+            const verifyButton =
+                card.querySelector(
+                    ".verify-button"
+                );
+
+
+            if (verifyButton) {
+
+                verifyButton.addEventListener(
+                    "click",
+                    async () => {
+
+                        const confirmed =
+                            confirm(
+                                `Mark ${data.name} as verified?`
+                            );
+
+
+                        if (!confirmed)
+                            return;
+
+
+                        verifyButton.disabled =
+                            true;
+
+
+                        try {
+
+                            await updateDoc(
+                                doc(
+                                    db,
+                                    "applicants",
+                                    applicant.id
+                                ),
+                                {
+                                    verified: true
+                                }
+                            );
+
+
+                            showMessage(
+                                adminMessage,
+                                "Applicant verified successfully.",
+                                "success"
+                            );
+
+
+                            await loadAdminApplicants();
+
+                            await loadApplicants();
+
+
+                        } catch (error) {
+
+                            console.error(
+                                "VERIFY ERROR:",
+                                error
+                            );
+
+
+                            showMessage(
+                                adminMessage,
+                                "Unable to verify applicant. Check your Firestore security rules.",
+                                "error"
+                            );
+
+
+                            verifyButton.disabled =
+                                false;
+
+                        }
+
+                    }
+                );
+
+            }
 
 
             deleteButton.addEventListener(
@@ -1813,7 +1907,8 @@ manualAddForm.addEventListener("submit", async (event) => {
 
                 uid: null,
 
-                createdAt: serverTimestamp()
+                createdAt:
+                    serverTimestamp()
 
             }
         );
@@ -1893,14 +1988,38 @@ function showMessage(
 function escapeHTML(value) {
 
     return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
 
 }
 
+
+/* =========================================================
+   INITIAL LOAD
+========================================================= */
 
 loadApplicants();
 
